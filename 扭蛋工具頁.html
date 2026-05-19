@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>我的專屬工具箱</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .btn-link {
+            text-decoration: none;
+        }
+        .tool-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        .tool-btn:active {
+            transform: scale(0.98);
+        }
+        /* 按鈕顏色辨識 */
+        .ai-btn { background: #3399EE; }      /* 隨隨藍 */
+        .gacha-btn { background: #0072E3; }   /* 扭蛋藍 */
+    </style>
+</head>
+<body>
+
+    <h1>🧰 我的 PWA 工具箱</h1>
+
+    <div class="container">
+        <a href="扭蛋計數v2.0.html" class="btn-link">
+            <button class="tool-btn gacha-btn">🎰 打開 扭蛋計數器</button>
+        </a>
+
+        <a href="扭蛋計數-代幣v1.0.html" class="btn-link">
+            <button class="tool-btn gacha-btn">🎰 打開 扭蛋計數器 - 代幣</button>
+        </a>
+    </div>
+
+</body>
+</html>

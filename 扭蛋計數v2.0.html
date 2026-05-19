@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <title>扭蛋計數</title>
+  <style>
+  
+    body {
+      background: #0072E3;
+    }
+    
+    h1 {
+      text-align: center;
+      color: white;
+    }
+    
+    input {
+      width: 35px;
+      text-align: center;
+      font-size: 12px;
+    }
+    
+    fieldset {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+      margin: 10px;
+    }
+    
+    legend {margin-bottom: 5px;}
+    
+    footer {
+      float: right;
+      font-size: 7px;
+      color: rgba(255,255,255,.5);
+    }
+    
+    #allForms {
+      display: none;
+      flex-direction: column;
+      background: rgba(255,255,255,.7);
+      border: 2px solid #000;
+      border-radius: 10px;
+      padding: 5px;
+      margin: 10px 0;
+    }
+    
+    #fromTop, #interactiveButton{
+      display:flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    
+    .container_All {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .priceDownAll {
+      display: flex;
+      justify-content: space-around;
+      gap: 5px;
+      margin-bottom: 10px;
+      font-size: 10px;
+    }
+    
+    .totalBg {
+      display: none;
+      padding: 5px;
+      border: 2px solid #000;
+      border-radius: 10px;
+      background: rgba(255,255,255,.7);
+    }
+    #totalPcsPrice {width: 100%;text-align:center;}
+    
+    #addFormText {width:100px;text-align:center;}
+    
+    #location {
+      width: 100px;
+      height: 30px;
+      text-align: center;
+      margin: 0 5px;
+    }
+    
+    #markDate {
+      width: 120px;
+      height: 30px;
+      text-align: center;
+      margin: 0 5px;
+    }
+    
+    .formNum {
+      padding: 0 10px;
+    }
+    
+    .pcsNum {
+      color: blue;
+      font-weight: bold;
+    }
+    
+    .priceNum {
+      color: green;
+      font-weight: bold;
+    }
+    .barcodeBar {
+      width: 100px;
+    }
+  </style>
+<body>
+  <h1>扭蛋計數</h1>
+    <div id="interactiveButton">
+   <button onclick="exportCSV()">📤 匯出(銷數)</button>
+   <button onclick="exportCSVOut()">📤 匯出(記錄)</button>
+   <input type="file" id="importMapFile" accept=".xlsx" style="display:none;" onchange="importBarcodeMap(event)">
+   <button onclick="document.querySelector('#importMapFile').click()">📥  匯入對照表</button>
+  </div>
+  <div id="fromTop">
+    <input type="text" id="addFormText" placeholder="輸入數量或地點" oninput="document.querySelector('#addForm').disabled = false">
+    <button id="addForm" onclick="addForm()" disabled="true">增加表格</button>
+    </div>
+  <div id="allForms"></div>
+  <div class="totalBg">
+  <fieldset id="totalPcsPrice">
+    <legend>
+      <input type="text" placeholder="抄數地點" id="location">
+     <input type="text" placeholder="上次日期 - 今天日期" id="markDate">
+    統計</legend>
+  <div id="allFormsTotal"></div>
+  </fieldset>
+  </div>
+   <footer>create by KinU 2026</footer>
+
+  
+  <script>
+    const allForms = document.querySelector('#allForms');
+   const allFormsTotal = document.querySelector('#allFormsTotal');
+   const totalBg = document.querySelector('.totalBg');
+   let currentFormCount = 0;
+   let machineRecords = [];
+   let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
+   
+   const formList = [
+     {locationName: "太陽冰室", count: 1},
+     {locationName: "致富", count: 2},
+     {locationName: "時代", count: 2},
+     {locationName: "栢蕙", count: 2},
+     {locationName: "官也街", count: 2},
+     {locationName: "媽閣輕軌站", count: 2},
+     {locationName: "濠尚POKEMON", count: 3},
+     {locationName: "美副將", count: 4},
+     {locationName: "濠尚", count: 4},
+     {locationName: "營地街", count: 6},
+     {locationName: "濠尚G層", count: 7},
+     {locationName: "新八佰伴", count: 9},
+     {locationName: "上葡京新八佰伴", count: 9},
+     ];
+   
+   
+    function addForm() {
+      const addFromText = document.querySelector('#addFormText');
+      let addText = addFormText.value.trim();
+      const locationName = document.querySelector('#location');
+      const markDateEl = document.querySelector('#markDate');
+      locationName.value = "";
+      markDateEl.value = "";
+      
+      let foundLocation = formList.find(fl => addText === fl.locationName );
+      
+      if (foundLocation) {
+        addText = foundLocation.count;
+        locationName.value = foundLocation.locationName;
+      } else {
+        addText = Number(addFormText.value.trim());
+      }
+      
+      if (!addText || addText <= 0) {
+        document.querySelector('#addForm').disabled = true;
+        alert('請輸入有效數量或地點');
+        return;
+      }
+      
+      currentFormCount = addText;
+      
+      addFormText.value = "";
+      allForms.innerHTML = "";
+      allFormsTotal.innerHTML = "";
+      allForms.style.display = "flex";
+      totalBg.style.display = "none";
+
+      for (let i = 1; i <= currentFormCount; i++) {
+      const formNum = `formNum${i}`;
+      let formHTML = `
+      <fieldset>
+      <legend>
+      <span class="formNum">第${i}頁</span>M0
+      <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm(${i})" placeholder="機頭" inputmode="numeric">
+      </legend>
+      `;
+      
+      for (let a = 1; a <= 9; a++) {
+        const barCodeTabIndex = 100 + i * 10 + a;
+        const pcsTabIndex = 200 + i * 10 + a;
+        const priceTabIndex = 300 + i * 10 + a;
+        formHTML += `
+        <div class="priceDownAll">
+        <span id="win_${i}_${a}">M0 - ${a}</span>
+        <input class="barcodeBar" id="barCode_${i}_${a}" placeholder="條碼" oninput="updateAllSubForm()" tabindex="${barCodeTabIndex}" inputmode="numeric">-
+        <input id="pcs_${i}_${a}" placeholder="個數" oninput="updateAllSubForm()" tabindex="${pcsTabIndex}" inputmode="numeric">-<input id="price_${i}_${a}" placeholder="價格" oninput="updateAllSubForm()" tabindex="${priceTabIndex}" inputmode="numeric">-<div>$ <span id="total_${i}_${a}">0</span></div>
+        </div>
+        `;
+      }
+      
+      formHTML += `
+      <div id="thisFormSum${i}"></div>
+      <div class="container_All" id="container_${i}">
+      </div>
+      </fieldset>`;
+      allForms.innerHTML += formHTML;
+      }
+      document.querySelector('#addForm').disabled = true;
+    }
+        
+   function importBarcodeMap(event) {
+     const file = event.target.files[0];
+       if (!file) {
+        alert('沒有選擇檔案');
+        return;
+    }
+    
+     const reader = new FileReader();
+     barcodePriceMap = {};
+     reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            barcodePriceMap = {};
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const barCode = String(row[0]).trim();
+                
+                const price = Number(row[1]);
+                
+                if (barCode && !isNaN(price)) {
+                    barcodePriceMap[barCode] = price;
+                }
+            }
+            
+            
+            alert(`✅ 對照表匯入成功，共 ${Object.keys(barcodePriceMap).length} 個條碼`);
+            console.log('條碼對照表：', barcodePriceMap);
+            
+        } catch (error) {
+            alert('❌ 檔案格式錯誤，請確認是正確的 .xlsx 檔案');
+            console.error(error);
+        }
+           localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
+    };
+    
+    reader.readAsArrayBuffer(file);
+}
+        
+    function updateAllSubForm() {
+        // A. 重新初始化資料箱子
+        machineRecords = [];
+        let summaryByPrice = { 20:0, 30:0, 40:0, 50:0, 60:0, 80:0, 100:0, 150:0 };
+        let grandTotalPcs = 0;
+        let grandTotalPrice = 0;
+
+        // B. 跑一次迴圈，只做「拿資料」跟「存資料」
+        for (let i = 1; i <= currentFormCount; i++) {
+            const headValue = document.querySelector(`#formNumText${i}`).value.trim();
+            let pageTotalPcs = 0;
+            let pageTotalPrice = 0;
+
+            for (let a = 1; a <= 9; a++) {
+                const target = document.querySelector(`#win_${i}_${a}`);
+                const barCode = document.querySelector(`#barCode_${i}_${a}`).value.trim();
+                const priceInput = document.querySelector(`#price_${i}_${a}`);
+                const pcs = Number(document.querySelector(`#pcs_${i}_${a}`).value.trim()) || 0;
+                
+                // 自動帶入價格邏輯
+                if (barCode && barcodePriceMap[barCode] && !priceInput.value.trim()) {
+                    priceInput.value = barcodePriceMap[barCode];
+                }
+                const price = Number(priceInput.value.trim()) || 0;
+                const rowSum = price * pcs;
+
+                // 把這台機器的狀態存進「箱子」 (這裡不會有找不到變數的問題)
+                  const record = {
+                    title: `M0${headValue}-${a}`,
+                    barcode: barCode || "0",
+                    price: price,
+                    pcs: pcs,
+                    total: rowSum
+                };
+                machineRecords.push(record);
+                if (target) {
+                  target.innerText = record.title;
+                }
+                // 計算累加值
+                pageTotalPcs += pcs;
+                pageTotalPrice += rowSum;
+                if (summaryByPrice[price] === undefined) {
+                  summaryByPrice[price] = 0;
+                }
+                    summaryByPrice[price] += pcs;
+
+                // 更新「單行」的 DOM 顯示 (僅視覺回饋)
+                const totalSpan = document.querySelector(`#total_${i}_${a}`);
+                if (totalSpan) {
+                    totalSpan.innerText = rowSum;
+                    totalSpan.style.color = rowSum > 0 ? "green" : "black";
+                }
+            }
+
+            // 更新「該頁頁尾」的 DOM 顯示
+            document.querySelector(`#thisFormSum${i}`).innerHTML = 
+                `<hr>總數 <span class="pcsNum">${pageTotalPcs}</span> 隻 - 共 $ <span class="priceNum">${pageTotalPrice}</span>`;
+            
+            grandTotalPcs += pageTotalPcs;
+            grandTotalPrice += pageTotalPrice;
+        }
+
+        // C. 更新最下方的總計 (傳入算好的資料)
+        renderSummary(grandTotalPcs, grandTotalPrice, summaryByPrice);
+    }
+
+  
+// --- 3. 畫面顯示邏輯 (只負責印出東西) ---
+    function renderSummary(pcs, price, summary) {
+        totalBg.style.display = "flex";
+        // 使用 map 把物件轉成 HTML 字串，非常優雅！
+        const detailHTML = Object.entries(summary)
+            .filter(([p, count]) => count > 0) // 只印出有數量的價格
+            .map(([p, count]) => `$<span style="color:red;font-weight:bold;">${p}</span> 共 <span class="pcsNum">${count}</span> 隻`)
+            .join("<br>");
+
+        allFormsTotal.innerHTML = `共 <span class="pcsNum">${pcs}</span> 個，共 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
+    }
+    
+    function exportCSV() {
+       const locationEl = document.querySelector('#location');
+       const markDateEl = document.querySelector('#markDate');
+       const locationName = locationEl.value.trim();
+       const dateText = markDateEl.value.trim();
+       
+    
+    for (let i = 1; i <= currentFormCount; i++) {
+      
+      const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
+      
+      if (!formTitle)
+      {
+        alert(`第${i}頁未輸入機頭`);
+       return;
+      }
+    }
+    
+    if (!locationName) {
+      alert("請輸入抄數地點"); 
+      return;
+    }
+    
+     if (!dateText) {
+      alert("請輸入日期"); 
+      return;
+    }
+    
+     const excelData = [
+       [
+         "qty",
+       "item code",
+       "barcode",
+       "unit price",
+       "discount percent",
+       "remark",
+       "item type",
+       "item name",
+       "part number",
+       "vendor part number",
+       "customer or vendor",
+       "expiry date",
+       "expiry min months",
+       "expiry max months",
+       "custom lot number",
+       "product price group"
+       ]
+      ];
+    
+    
+        machineRecords.forEach(m => {
+        excelData.push([
+          m.pcs,
+          "",
+          m.barcode,
+          m.price,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+          ]);
+       });
+   
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.aoa_to_sheet(excelData);
+        XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
+        XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
+  }
+    
+// --- 4. 匯出邏輯 (現在超級簡單！) ---
+    function exportCSVOut() {
+        const locationName = document.querySelector('#location').value.trim();
+        let dateText = document.querySelector('#markDate').value.trim();
+        for (let i = 1; i <= currentFormCount; i++) {
+      
+      const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
+      
+      if (!formTitle)
+      {
+        alert(`第${i}頁未輸入機頭`);
+       return;
+      }
+    }
+        if (!locationName) return alert("請輸入地點");
+        if (!dateText) return alert("請輸入抄數日期");
+        // 不再需要 for 迴圈讀取 DOM！直接讀取 machineRecords
+        const excelData = [
+            ["地點：", locationName],
+            ["日期：", dateText],
+            [],
+            ["機身編號", "貨品編號", "價格", "個數", "單項銷售"]
+        ];
+          let grandTotalPcs = 0;
+          let grandTotalPrice = 0;
+          let summaryByPrice = {};
+        // 使用 forEach 把箱子裡的資料倒出來
+        machineRecords.forEach(m => {
+            excelData.push([m.title, m.barcode, m.price, m.pcs, m.total]);
+            
+            grandTotalPcs += m.pcs;
+            grandTotalPrice += m.total;
+            
+            if(m.pcs > 0) {
+              if(summaryByPrice[m.price] === undefined) {
+                summaryByPrice[m.price] = 0;
+              }
+              summaryByPrice[m.price] += m.pcs;
+            }
+        });
+        excelData.push([]);
+        excelData.push(["價格分類統計"]);
+        excelData.push(["價格","總數量","總金額"]);
+        Object.entries(summaryByPrice).forEach(([price, count]) => {
+          let totalByPrice = Number(price) * count;
+          excelData.push([`MOP ${price}`, `${count}隻`, `MOP ${totalByPrice}`]);
+        });
+        excelData.push([]);
+        excelData.push(["總計結果", "", `${grandTotalPcs}隻`, `MOP ${grandTotalPrice}`]);
+        // 下載檔案 (XLSX 邏輯保持不變)
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.aoa_to_sheet(excelData);
+        XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
+        XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
+    }
+    
+    window.addEventListener("beforeunload", (event) => {
+     event.preventDefault();
+     event.returnValue = "";
+});
+
+  </script>
+</body>
+</html>
