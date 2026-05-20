@@ -188,6 +188,7 @@
      {locationName: "濠尚G層", count: 7},
      {locationName: "新八佰伴", count: 9},
      {locationName: "上葡京新八佰伴", count: 9},
+     {locationName: "影滙", count:8}
      ];
    
    //讀取localStorage
@@ -576,6 +577,8 @@
         if (!dateText) return alert("請輸入抄數日期");
 
         const excelData = [
+            ["盈喜澳門一人有限公司"],
+            [],
             ["地點：", locationName],
             ["日期：", dateText],
             [],
@@ -601,12 +604,15 @@
         excelData.push([]);
         excelData.push(["價格分類統計"]);
         excelData.push(["價格","總數量","總金額"]);
+
         Object.entries(summaryByPrice).forEach(([price, count]) => {
           let totalByPrice = Number(price) * count;
           excelData.push([`MOP ${price}`, `${count}隻`, `MOP ${totalByPrice}`]);
         });
         excelData.push([]);
         excelData.push(["總計結果", "", `${grandTotalPcs}隻`, `MOP ${grandTotalPrice}`]);
+        excelData.push([]);
+        excelData.push(["抄數員簽署:","","公司蓋章:",""]);
 
         const workbook = XLSX.utils.book_new();
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
@@ -624,3 +630,4 @@
   </script>
 </body>
 </html>
+
