@@ -52,7 +52,6 @@
       margin-bottom: 10px;
     }
     
-    /* ✨ 新增：動態增減按鈕欄位的樣式 */
     #adjustButtons {
       display: none;
       justify-content: space-between;
@@ -132,8 +131,33 @@
     .barcodeBar {
       width: 100px;
     }
+    
+    #saveToast {
+    position: fixed;
+    top: 20px;
+    right: -250px;
+  
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: right 0.4s ease-out; 
+  }
+
+  .show-toast {
+  right: 20px !important; 
+  }
+
+.toast-success { background: #28a745;}
+.toast-info { background: #17a2b8;}
+
   </style>
 <body>
+  <div id="saveToast"></div>
+
   <h1>扭蛋計數</h1>
     <div id="interactiveButton">
    <button onclick="exportCSV()">📤 匯出(銷數)</button>
@@ -169,11 +193,12 @@
     const allForms = document.querySelector('#allForms');
    const allFormsTotal = document.querySelector('#allFormsTotal');
    const totalBg = document.querySelector('.totalBg');
+    const toast = document.querySelector('#saveToast');
+    
    let currentFormCount = 0;
    let machineRecords = [];
    let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
    
-   // 預設地點清單
    const formList = [
      {locationName: "太陽冰室", count: 1},
      {locationName: "致富", count: 2},
@@ -191,20 +216,15 @@
      {locationName: "影滙", count:8}
      ];
    
-   //讀取localStorage
   function loadFromStorage() {
     const savedString = localStorage.getItem('gachaSaveData');
-    if (!savedString) return; // 如果沒存檔過就結束
-
-    // 1. 拆箱
+    if (!savedString) return;
     const saveData = JSON.parse(savedString);
 
-    // 2. 恢復基本資訊
     document.querySelector('#location').value = saveData.location;
     document.querySelector('#markDate').value = saveData.markDate;
     currentFormCount = saveData.formCount;
 
-    // 3. 重新把 HTML 表單長出來
     if (currentFormCount > 0) {
         let fullHTML = "";
         for (let i = 1; i <= currentFormCount; i++) {
@@ -215,28 +235,39 @@
         document.querySelector('#adjustButtons').style.display = "flex";
         document.querySelector('#addForm').disabled = true;
     }
-
-    // 4. 把對應的數值填回格子裡
     Object.keys(saveData.inputs).forEach(id => {
         const inputEl = document.querySelector(`#${id}`);
         if (inputEl && inputEl.type !== 'file') {
             inputEl.value = saveData.inputs[id];
         }
     });
-
-    // 5. 重新計算總計
-    updateAllSubForm();
+    showSaveToast('💾 已讀取記錄', 'success');
+    updateAllSubForm(true);
+  }
+  
+   let toastTimeout;
+  function showSaveToast(text, type = 'success') {
+    toast.innerText = "";
+    toast.innerText = text;
+    toast.classList.remove('toast-success', 'toast-info');
+    if (type === 'info'){
+    toast.classList.add('toast-info');
+    } else {
+      toast.classList.add('toast-success');
+    }
+    toast.classList.add('show-toast');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('show-toast');
+    }, 2000);
   }
 
-   
-   
-   // ✨ 抽離出來的單頁 HTML 生成器，方便動態追加時重複呼叫
    function getSingleFormHTML(i) {
       let formHTML = `
       <fieldset id="fieldset_page_${i}">
       <legend>
       <span class="formNum">第${i}頁</span>M0
-      <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm(${i})" placeholder="機頭" inputmode="numeric">
+      <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm()" placeholder="機頭" inputmode="numeric">
       </legend>
       `;
       
@@ -262,7 +293,7 @@
    }
    
     function addForm() {
-      const addFromText = document.querySelector('#addFormText');
+      const addFormText = document.querySelector('#addFormText');
       let addText = addFormText.value.trim();
       const locationName = document.querySelector('#location');
       const markDateEl = document.querySelector('#markDate');
@@ -302,7 +333,6 @@
       allForms.style.display = "flex";
       totalBg.style.display = "none";
       
-      // 顯示動態調整按鈕
       document.querySelector('#adjustButtons').style.display = "flex";
 
       let fullHTML = "";
@@ -312,18 +342,19 @@
     
       allForms.innerHTML = fullHTML;
       document.querySelector('#addForm').disabled = true;
+      showSaveToast(`📄 已成功生成 ${currentFormCount} 頁表格`, 'success');
+      updateAllSubForm(true);
     }
 
-    // ✨ 新增：不重置數據追加一頁
     function appendOneForm() {
       currentFormCount++;
       const newFormHTML = getSingleFormHTML(currentFormCount);
-      // 使用 insertAdjacentHTML 插入末尾，完美保留前面所有 input 的使用者輸入值！
       allForms.insertAdjacentHTML('beforeend', newFormHTML);
-      updateAllSubForm();
+      showSaveToast(`📄 已追加第  ${currentFormCount} 頁表格`, 'success');
+      updateAllSubForm(true);
+      
     }
 
-    // ✨ 新增：刪除最後一頁
     function removeLastForm() {
       if (currentFormCount <= 1) {
         alert('至少需要保留一頁表格！');
@@ -333,9 +364,10 @@
         const lastFieldset = document.querySelector(`#fieldset_page_${currentFormCount}`);
         if (lastFieldset) {
           lastFieldset.remove();
+          showSaveToast(`📄 已刪除第 ${currentFormCount} 頁`, 'info');
         }
         currentFormCount--;
-        updateAllSubForm(); // 重新計算總計
+        updateAllSubForm(true);
       }
     }
         
@@ -375,24 +407,23 @@
             alert(`✅ 對照表匯入成功，共 ${Object.keys(barcodePriceMap).length} 個條碼`);
             console.log('條碼對照表：', barcodePriceMap);
             
+           localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
+            
         } catch (error) {
             alert('❌ 檔案格式錯誤，請確認是正確的 .xlsx 檔案');
             console.error(error);
         }
-           localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
     };
     
     reader.readAsArrayBuffer(file);
 }
         
-    function updateAllSubForm() {
-        // A. 重新初始化資料箱子
+    function updateAllSubForm(skipSaveToast = false) {
         machineRecords = [];
         let summaryByPrice = { 20:0, 30:0, 40:0, 50:0, 60:0, 80:0, 100:0, 150:0 };
         let grandTotalPcs = 0;
         let grandTotalPrice = 0;
 
-        // B. 跑一次迴圈，只做「拿資料」跟「存資料」
         for (let i = 1; i <= currentFormCount; i++) {
             const headValue = document.querySelector(`#formNumText${i}`).value.trim();
             let pageTotalPcs = 0;
@@ -403,15 +434,11 @@
                 const barCode = document.querySelector(`#barCode_${i}_${a}`).value.trim();
                 const priceInput = document.querySelector(`#price_${i}_${a}`);
                 const pcs = Number(document.querySelector(`#pcs_${i}_${a}`).value.trim()) || 0;
-                
-                // 自動帶入價格邏輯
                 if (barCode && barcodePriceMap[barCode] && !priceInput.value.trim()) {
                     priceInput.value = barcodePriceMap[barCode];
                 }
                 const price = Number(priceInput.value.trim()) || 0;
                 const rowSum = price * pcs;
-
-                // 把這台機器的狀態存進「箱子」
                   const record = {
                     title: `M0${headValue}-${a}`,
                     barcode: barCode || "0",
@@ -423,23 +450,18 @@
                 if (target) {
                   target.innerText = record.title;
                 }
-                // 計算累加值
                 pageTotalPcs += pcs;
                 pageTotalPrice += rowSum;
                 if (summaryByPrice[price] === undefined) {
                   summaryByPrice[price] = 0;
                 }
                     summaryByPrice[price] += pcs;
-
-                // 更新「單行」的 DOM 顯示
                 const totalSpan = document.querySelector(`#total_${i}_${a}`);
                 if (totalSpan) {
                     totalSpan.innerText = rowSum;
                     totalSpan.style.color = rowSum > 0 ? "green" : "black";
                 }
             }
-
-            // 更新「該頁頁尾」的 DOM 顯示
             document.querySelector(`#thisFormSum${i}`).innerHTML = 
                 `<hr>總數 <span class="pcsNum">${pageTotalPcs}</span> 隻 - 共 $ <span class="priceNum">${pageTotalPrice}</span>`;
             
@@ -447,14 +469,10 @@
             grandTotalPrice += pageTotalPrice;
         }
         
-        saveToStorage();
-        
-        // C. 更新最下方的總計
+        saveToStorage(skipSaveToast);
         renderSummary(grandTotalPcs, grandTotalPrice, summaryByPrice);
     }
 
-  
-// --- 3. 畫面顯示邏輯 ---
     function renderSummary(pcs, price, summary) {
         totalBg.style.display = "flex";
         const detailHTML = Object.entries(summary)
@@ -465,9 +483,7 @@
         allFormsTotal.innerHTML = `共 <span class="pcsNum">${pcs}</span> 個，共 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
     
-    //保存到localStorage
-  function saveToStorage() {
-    // 1. 準備好大箱子
+  function saveToStorage(skipToast = false) {
     let saveData = {
         location: document.querySelector('#location').value,
         markDate: document.querySelector('#markDate').value,
@@ -475,18 +491,17 @@
         inputs: {}
     };
 
-    // 2. 收集畫面上所有輸入框的值 (利用它們的 id)
     const allInputs = document.querySelectorAll('input');
     allInputs.forEach(input => {
         if (input.id && input.type !== 'file') { 
-          // 只要有 id 的格子和不是file我們就存
             saveData.inputs[input.id] = input.value;
         }
     });
-
-    // 3. 打包成 JSON 並存入 localStorage
+    if (!skipToast){
+      showSaveToast("💾 已自動存檔", 'success');
+    }
+    
     localStorage.setItem('gachaSaveData', JSON.stringify(saveData));
-    console.log(saveData);
   }
 
     
@@ -560,9 +575,9 @@
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
         XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
+         showSaveToast(`📤 已匯出 ${locationName}(${dateText})-銷數`, 'info');
   }
     
-// --- 4. 匯出邏輯 ---
     function exportCSVOut() {
         const locationName = document.querySelector('#location').value.trim();
         let dateText = document.querySelector('#markDate').value.trim();
@@ -618,6 +633,7 @@
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
         XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
+       showSaveToast(`📤 已匯出 ${locationName}(${dateText})-扭蛋記錄`, 'info');
     }
     
     window.onload = loadFromStorage;
