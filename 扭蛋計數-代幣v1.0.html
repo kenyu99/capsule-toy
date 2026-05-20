@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="扭蛋計數-代幣">
+    <meta name="apple-mobile-web-app-title" content="扭蛋計數">
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0072E3">
@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1424/1424453.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1424/1424453.png">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <title>扭蛋計數-代幣</title>
+  <title>扭蛋計數</title>
   <style>
   
     body {
@@ -59,6 +59,32 @@
       display:flex;
       justify-content: space-between;
       margin-bottom: 10px;
+    }
+    
+    #adjustButtons {
+      display: none;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    
+    .btn-add {
+      flex: 1;
+      padding: 8px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .btn-remove {
+      flex: 1;
+      padding: 8px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
     }
     
     .container_All {
@@ -129,8 +155,14 @@
   </div>
   <div id="fromTop">
     <input type="text" id="addFormText" placeholder="輸入數量或地點" oninput="document.querySelector('#addForm').disabled = false">
-    <button id="addForm" onclick="addForm()" disabled="true">增加表格</button>
+    <button id="addForm" onclick="addForm()" disabled="true">生成/重置表格</button>
     </div>
+    
+  <div id="adjustButtons">
+    <button class="btn-add" onclick="appendOneForm()">➕ 追加一頁 (不重置數據)</button>
+    <button class="btn-remove" onclick="removeLastForm()">➖ 刪除末頁</button>
+  </div>
+    
   <div id="allForms"></div>
   <div class="totalBg">
   <fieldset id="totalPcsPrice">
@@ -156,44 +188,48 @@
      {locationName: "花城一雄", count: 6},
      ];
    
-   
-    function addForm() {
-      const addFromText = document.querySelector('#addFormText');
-      let addText = addFormText.value.trim();
-      const locationName = document.querySelector('#location');
-      const markDateEl = document.querySelector('#markDate');
-      locationName.value = "";
-      markDateEl.value = "";
-      
-      let foundLocation = formList.find(fl => addText === fl.locationName );
-      
-      if (foundLocation) {
-        addText = foundLocation.count;
-        locationName.value = foundLocation.locationName;
-      } else {
-        addText = Number(addFormText.value.trim());
-      }
-      
-      if (!addText || addText <= 0) {
-        document.querySelector('#addForm').disabled = true;
-        alert('請輸入有效數量或地點');
-        return;
-      }
-      
-      currentFormCount = addText;
-      
-      addFormText.value = "";
-      allForms.innerHTML = "";
-      allFormsTotal.innerHTML = "";
-      allForms.style.display = "flex";
-      totalBg.style.display = "none";
+      //讀取localStorage
+  function loadFromStorage() {
+    const savedString = localStorage.getItem('gachaTokenSaveData');
+    if (!savedString) return; // 如果沒存檔過就結束
 
-      for (let i = 1; i <= currentFormCount; i++) {
-      const formNum = `formNum${i}`;
+    // 1. 拆箱
+    const saveData = JSON.parse(savedString);
+
+    // 2. 恢復基本資訊
+    document.querySelector('#location').value = saveData.location;
+    document.querySelector('#markDate').value = saveData.markDate;
+    currentFormCount = saveData.formCount;
+
+    // 3. 重新把 HTML 表單長出來
+    if (currentFormCount > 0) {
+        let fullHTML = "";
+        for (let i = 1; i <= currentFormCount; i++) {
+            fullHTML += getSingleFormHTML(i);
+        }
+        allForms.innerHTML = fullHTML;
+        allForms.style.display = "flex";
+        document.querySelector('#adjustButtons').style.display = "flex";
+        document.querySelector('#addForm').disabled = true;
+    }
+
+    // 4. 把對應的數值填回格子裡
+    Object.keys(saveData.inputs).forEach(id => {
+        const inputEl = document.querySelector(`#${id}`);
+        if (inputEl && inputEl.type !== 'file') {
+            inputEl.value = saveData.inputs[id];
+        }
+    });
+
+    // 5. 重新計算總計
+    updateAllSubForm();
+  }
+   
+      function getSingleFormHTML(i) {
       let formHTML = `
-      <fieldset>
+      <fieldset id="fieldset_page_${i}">
       <legend>
-      <span class="formNum">第${i}頁</span>TK0
+      <span class="formNum">第${i}頁</span>M0
       <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm(${i})" placeholder="機頭" inputmode="numeric">
       </legend>
       `;
@@ -205,10 +241,9 @@
         const priceTabIndex = 400 + i * 10 + a;
         formHTML += `
         <div class="priceDownAll">
-        <span id="win_${i}_${a}">TK0 - ${a}</span>
+        <span id="win_${i}_${a}">M0 - ${a}</span>
         <input class="barcodeBar" id="barCode_${i}_${a}" placeholder="條碼" oninput="updateAllSubForm()" tabindex="${barCodeTabIndex}" inputmode="numeric">-
-        <input id="pcs_${i}_${a}" placeholder="個數" oninput="updateAllSubForm()" tabindex="${pcsTabIndex}" inputmode="numeric">-<input id="coinPcs_${i}_${a}" placeholder="幣數" oninput="updateAllSubForm()" tabindex="${coinPcsTabIndex}" inputmode="numeric">-
-        <input id="price_${i}_${a}" placeholder="價格" oninput="updateAllSubForm()" tabindex="${priceTabIndex}" inputmode="numeric">-<div>$ <span id="total_${i}_${a}">0</span></div>
+        <input id="pcs_${i}_${a}" placeholder="個數" oninput="updateAllSubForm()" tabindex="${pcsTabIndex}" inputmode="numeric">-<input id="coinPcs_${i}_${a}" placeholder="幣數" oninput="updateAllSubForm()" tabindex="${coinPcsTabIndex}" inputmode="numeric">-<input id="price_${i}_${a}" placeholder="價格" oninput="updateAllSubForm()" tabindex="${priceTabIndex}" inputmode="numeric">-<div>$ <span id="total_${i}_${a}">0</span></div>
         </div>
         `;
       }
@@ -218,11 +253,89 @@
       <div class="container_All" id="container_${i}">
       </div>
       </fieldset>`;
-      allForms.innerHTML += formHTML;
+      return formHTML;
+   }
+   
+   
+   
+    function addForm() {
+      const addFromText = document.querySelector('#addFormText');
+      let addText = addFormText.value.trim();
+      const locationName = document.querySelector('#location');
+      const markDateEl = document.querySelector('#markDate');
+      
+      let targetCount = 0;
+      let targetLocation = "";
+      let foundLocation = formList.find(fl => addText === fl.locationName );
+      
+      if (foundLocation) {
+        targetCount = foundLocation.count;
+        targetLocation = foundLocation.locationName;
+      } else {
+        targetCount = Number(addText);
       }
+      
+      if (!targetCount || targetCount <= 0) {
+        document.querySelector('#addForm').disabled = true;
+        alert('請輸入有效數量或地點');
+        return;
+      }
+      
+      if (allForms.innerHTML != ""){
+        let isReAddForm = confirm(`**重新生成會消除數據**，是否確認生成？\n(若添加單頁請按 + 追加)`);
+        if (!isReAddForm) {
+          addFormText.value = "";
+          document.querySelector('#addForm').disabled = true;
+          return;
+        }
+      }
+      localStorage.removeItem('gachaTokenSaveData');
+      currentFormCount = targetCount;
+      locationName.value = targetLocation;
+      markDateEl.value = "";
+      addFormText.value = "";
+      allForms.innerHTML = "";
+      allFormsTotal.innerHTML = "";
+      allForms.style.display = "flex";
+      totalBg.style.display = "none";
+      
+      // 顯示動態調整按鈕
+      document.querySelector('#adjustButtons').style.display = "flex";
+
+      let fullHTML = "";
+      for (let i = 1; i <= currentFormCount; i++) {
+        fullHTML += getSingleFormHTML(i);
+      }
+    
+      allForms.innerHTML = fullHTML;
       document.querySelector('#addForm').disabled = true;
     }
-        
+    
+        // ✨ 新增：不重置數據追加一頁
+    function appendOneForm() {
+      currentFormCount++;
+      const newFormHTML = getSingleFormHTML(currentFormCount);
+      // 使用 insertAdjacentHTML 插入末尾，完美保留前面所有 input 的使用者輸入值！
+      allForms.insertAdjacentHTML('beforeend', newFormHTML);
+      updateAllSubForm();
+    }
+
+    // ✨ 新增：刪除最後一頁
+    function removeLastForm() {
+      if (currentFormCount <= 1) {
+        alert('至少需要保留一頁表格！');
+        return;
+      }
+      if (confirm(`確定要刪除「第 ${currentFormCount} 頁」嗎？該頁已輸入的數據將會消失。`)) {
+        const lastFieldset = document.querySelector(`#fieldset_page_${currentFormCount}`);
+        if (lastFieldset) {
+          lastFieldset.remove();
+        }
+        currentFormCount--;
+        updateAllSubForm(); // 重新計算總計
+      }
+    }
+    
    function importBarcodeMap(event) {
      const file = event.target.files[0];
        if (!file) {
@@ -352,7 +465,8 @@
             grandTotalPrice += pageTotalPrice;
             grandTotalCoin += pageTotalCoin;
         }
-
+        
+        saveToStorage();
         // C. 更新最下方的總計 (傳入算好的資料)
         renderSummary(grandTotalPcs, grandTotalPrice, grandTotalCoin, summaryByPrice);
     }
@@ -368,6 +482,31 @@
             .join("<br>");
         allFormsTotal.innerHTML = `扭蛋共 <span class="pcsNum">${pcs}</span> 隻，代幣共 <span class="coinPcsNum">${coins}</span> 個，銷售 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
+    
+        //保存到localStorage
+  function saveToStorage() {
+    // 1. 準備好大箱子
+    let saveData = {
+        location: document.querySelector('#location').value,
+        markDate: document.querySelector('#markDate').value,
+        formCount: currentFormCount,
+        inputs: {}
+    };
+
+    // 2. 收集畫面上所有輸入框的值 (利用它們的 id)
+    const allInputs = document.querySelectorAll('input');
+    allInputs.forEach(input => {
+        if (input.id && input.type !== 'file') { 
+          // 只要有 id 的格子和不是file我們就存
+            saveData.inputs[input.id] = input.value;
+        }
+    });
+
+    // 3. 打包成 JSON 並存入 localStorage
+    localStorage.setItem('gachaTokenSaveData', JSON.stringify(saveData));
+    console.log(saveData);
+  }
+    
     
     function exportCSV() {
        const locationEl = document.querySelector('#location');
@@ -509,10 +648,13 @@
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
     }
     
+   window.onload = loadFromStorage;
+    
     window.addEventListener("beforeunload", (event) => {
      event.preventDefault();
      event.returnValue = "";
-});
+  });
+
 
   </script>
 </body>
