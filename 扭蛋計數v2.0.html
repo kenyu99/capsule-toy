@@ -190,6 +190,45 @@
      {locationName: "上葡京新八佰伴", count: 9},
      ];
    
+   //讀取localStorage
+  function loadFromStorage() {
+    const savedString = localStorage.getItem('gachaSaveData');
+    if (!savedString) return; // 如果沒存檔過就結束
+
+    // 1. 拆箱
+    const saveData = JSON.parse(savedString);
+
+    // 2. 恢復基本資訊
+    document.querySelector('#location').value = saveData.location;
+    document.querySelector('#markDate').value = saveData.markDate;
+    currentFormCount = saveData.formCount;
+
+    // 3. 重新把 HTML 表單長出來
+    if (currentFormCount > 0) {
+        let fullHTML = "";
+        for (let i = 1; i <= currentFormCount; i++) {
+            fullHTML += getSingleFormHTML(i);
+        }
+        allForms.innerHTML = fullHTML;
+        allForms.style.display = "flex";
+        document.querySelector('#adjustButtons').style.display = "flex";
+        document.querySelector('#addForm').disabled = true;
+    }
+
+    // 4. 把對應的數值填回格子裡
+    Object.keys(saveData.inputs).forEach(id => {
+        const inputEl = document.querySelector(`#${id}`);
+        if (inputEl && inputEl.type !== 'file') {
+            inputEl.value = saveData.inputs[id];
+        }
+    });
+
+    // 5. 重新計算總計
+    updateAllSubForm();
+  }
+
+   
+   
    // ✨ 抽離出來的單頁 HTML 生成器，方便動態追加時重複呼叫
    function getSingleFormHTML(i) {
       let formHTML = `
@@ -252,7 +291,7 @@
           return;
         }
       }
-      
+      localStorage.removeItem('gachaSaveData');
       currentFormCount = targetCount;
       locationName.value = targetLocation;
       markDateEl.value = "";
@@ -406,7 +445,9 @@
             grandTotalPcs += pageTotalPcs;
             grandTotalPrice += pageTotalPrice;
         }
-
+        
+        saveToStorage();
+        
         // C. 更新最下方的總計
         renderSummary(grandTotalPcs, grandTotalPrice, summaryByPrice);
     }
@@ -422,6 +463,31 @@
 
         allFormsTotal.innerHTML = `共 <span class="pcsNum">${pcs}</span> 個，共 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
+    
+    //保存到localStorage
+  function saveToStorage() {
+    // 1. 準備好大箱子
+    let saveData = {
+        location: document.querySelector('#location').value,
+        markDate: document.querySelector('#markDate').value,
+        formCount: currentFormCount,
+        inputs: {}
+    };
+
+    // 2. 收集畫面上所有輸入框的值 (利用它們的 id)
+    const allInputs = document.querySelectorAll('input');
+    allInputs.forEach(input => {
+        if (input.id && input.type !== 'file') { 
+          // 只要有 id 的格子和不是file我們就存
+            saveData.inputs[input.id] = input.value;
+        }
+    });
+
+    // 3. 打包成 JSON 並存入 localStorage
+    localStorage.setItem('gachaSaveData', JSON.stringify(saveData));
+    console.log(saveData);
+  }
+
     
     function exportCSV() {
        const locationEl = document.querySelector('#location');
@@ -548,6 +614,8 @@
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
     }
     
+    window.onload = loadFromStorage;
+    
     window.addEventListener("beforeunload", (event) => {
      event.preventDefault();
      event.returnValue = "";
@@ -556,4 +624,3 @@
   </script>
 </body>
 </html>
-
