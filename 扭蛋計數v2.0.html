@@ -136,7 +136,6 @@
     position: fixed;
     top: 20px;
     right: -250px;
-  
     color: white;
     padding: 10px 20px;
     border-radius: 20px;
@@ -190,6 +189,7 @@
 
   
   <script>
+  (() => {
     const allForms = document.querySelector('#allForms');
    const allFormsTotal = document.querySelector('#allFormsTotal');
    const totalBg = document.querySelector('.totalBg');
@@ -215,6 +215,8 @@
      {locationName: "上葡京新八佰伴", count: 9},
      {locationName: "影滙", count:8}
      ];
+   
+   let toastTimeout;
    
   function loadFromStorage() {
     const savedString = localStorage.getItem('gachaSaveData');
@@ -245,7 +247,6 @@
     updateAllSubForm(true);
   }
   
-   let toastTimeout;
   function showSaveToast(text, type = 'success') {
     toast.innerText = "";
     toast.innerText = text;
@@ -504,7 +505,6 @@
     localStorage.setItem('gachaSaveData', JSON.stringify(saveData));
   }
 
-    
     function exportCSV() {
        const locationEl = document.querySelector('#location');
        const markDateEl = document.querySelector('#markDate');
@@ -631,18 +631,45 @@
 
         const workbook = XLSX.utils.book_new();
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
+        
+        sheet['!cols'] = [
+            { wch: 15 }, 
+            { wch: 18 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 15 }
+        ];
+        sheet['!merges'] = [
+            { 
+              s: { r: 0, c: 0 },
+              e: { r: 0, c: 1 }
+            }
+        ];
+
         XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
        showSaveToast(`📤 已匯出 ${locationName}(${dateText})-扭蛋記錄`, 'info');
     }
     
-    window.onload = loadFromStorage;
-    
     window.addEventListener("beforeunload", (event) => {
      event.preventDefault();
      event.returnValue = "";
-});
-
+  });
+  
+    window.onload = loadFromStorage;
+    window.showSaveToast = showSaveToast;
+    window.addForm = addForm;
+    window.getSingleFormHTML = getSingleFormHTML;
+    window.appendOneForm = appendOneForm;
+    window.removeLastForm = removeLastForm;
+    window.importBarcodeMap = importBarcodeMap;
+    window.updateAllSubForm = updateAllSubForm;
+    window.renderSummary = renderSummary;
+    window.saveToStorage = saveToStorage;
+    window.exportCSV = exportCSV;
+    window.exportCSVOut = exportCSVOut;
+    
+})();
   </script>
 </body>
 </html>
