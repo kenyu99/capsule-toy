@@ -2,15 +2,6 @@
 <html lang="zh-TW">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="扭蛋計數">
-    
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0072E3">
-    
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1424/1424453.png">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1424/1424453.png">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <title>扭蛋計數</title>
   <style>
@@ -144,8 +135,31 @@
     .barcodeBar {
       width: 100px;
     }
+    
+    #saveToast {
+    position: fixed;
+    top: 20px;
+    right: -250px;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: right 0.4s ease-out; 
+  }
+
+  .show-toast {
+  right: 20px !important; 
+  }
+
+  .toast-success { background: #28a745;}
+  .toast-info { background: #17a2b8;}
   </style>
 <body>
+  <div id="saveToast"></div>
+  
   <h1>扭蛋計數 - 代幣</h1>
     <div id="interactiveButton">
    <button onclick="exportCSV()">📤 匯出(銷數)</button>
@@ -177,31 +191,30 @@
 
   
   <script>
+  (() => {
     const allForms = document.querySelector('#allForms');
    const allFormsTotal = document.querySelector('#allFormsTotal');
    const totalBg = document.querySelector('.totalBg');
    let currentFormCount = 0;
    let machineRecords = [];
    let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
+    const toast = document.querySelector('#saveToast');
+    let toastTimeout;
    
    const formList = [
      {locationName: "花城一雄", count: 6},
      ];
-   
-      //讀取localStorage
-  function loadFromStorage() {
-    const savedString = localStorage.getItem('gachaTokenSaveData');
-    if (!savedString) return; // 如果沒存檔過就結束
 
-    // 1. 拆箱
+    function loadFromStorage() {
+    const savedString = localStorage.getItem('gachaTokenSaveData');
+    if (!savedString) return;
+
     const saveData = JSON.parse(savedString);
 
-    // 2. 恢復基本資訊
     document.querySelector('#location').value = saveData.location;
     document.querySelector('#markDate').value = saveData.markDate;
     currentFormCount = saveData.formCount;
 
-    // 3. 重新把 HTML 表單長出來
     if (currentFormCount > 0) {
         let fullHTML = "";
         for (let i = 1; i <= currentFormCount; i++) {
@@ -213,24 +226,38 @@
         document.querySelector('#addForm').disabled = true;
     }
 
-    // 4. 把對應的數值填回格子裡
     Object.keys(saveData.inputs).forEach(id => {
         const inputEl = document.querySelector(`#${id}`);
         if (inputEl && inputEl.type !== 'file') {
             inputEl.value = saveData.inputs[id];
         }
     });
-
-    // 5. 重新計算總計
-    updateAllSubForm();
+    showSaveToast('💾 已讀取記錄', 'success');
+    updateAllSubForm(true);
   }
-   
-      function getSingleFormHTML(i) {
+
+    function showSaveToast(text, type = 'success') {
+    toast.innerText = "";
+    toast.innerText = text;
+    toast.classList.remove('toast-success', 'toast-info');
+    if (type === 'info'){
+    toast.classList.add('toast-info');
+    } else {
+      toast.classList.add('toast-success');
+    }
+    toast.classList.add('show-toast');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('show-toast');
+    }, 2000);
+  }
+
+    function getSingleFormHTML(i) {
       let formHTML = `
       <fieldset id="fieldset_page_${i}">
       <legend>
       <span class="formNum">第${i}頁</span>M0
-      <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm(${i})" placeholder="機頭" inputmode="numeric">
+      <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm()" placeholder="機頭" inputmode="numeric">
       </legend>
       `;
       
@@ -256,10 +283,8 @@
       return formHTML;
    }
    
-   
-   
     function addForm() {
-      const addFromText = document.querySelector('#addFormText');
+      const addFormText = document.querySelector('#addFormText');
       let addText = addFormText.value.trim();
       const locationName = document.querySelector('#location');
       const markDateEl = document.querySelector('#markDate');
@@ -299,7 +324,6 @@
       allForms.style.display = "flex";
       totalBg.style.display = "none";
       
-      // 顯示動態調整按鈕
       document.querySelector('#adjustButtons').style.display = "flex";
 
       let fullHTML = "";
@@ -309,18 +333,18 @@
     
       allForms.innerHTML = fullHTML;
       document.querySelector('#addForm').disabled = true;
+      showSaveToast(`📄 已成功生成 ${currentFormCount} 頁表格`, 'success');
+      updateAllSubForm(true);
     }
     
-        // ✨ 新增：不重置數據追加一頁
     function appendOneForm() {
       currentFormCount++;
       const newFormHTML = getSingleFormHTML(currentFormCount);
-      // 使用 insertAdjacentHTML 插入末尾，完美保留前面所有 input 的使用者輸入值！
       allForms.insertAdjacentHTML('beforeend', newFormHTML);
-      updateAllSubForm();
+      showSaveToast(`📄 已追加第  ${currentFormCount} 頁表格`, 'success');
+      updateAllSubForm(true);
     }
 
-    // ✨ 新增：刪除最後一頁
     function removeLastForm() {
       if (currentFormCount <= 1) {
         alert('至少需要保留一頁表格！');
@@ -330,9 +354,10 @@
         const lastFieldset = document.querySelector(`#fieldset_page_${currentFormCount}`);
         if (lastFieldset) {
           lastFieldset.remove();
+          showSaveToast(`📄 已刪除第 ${currentFormCount} 頁`, 'info');
         }
         currentFormCount--;
-        updateAllSubForm(); // 重新計算總計
+        updateAllSubForm(true);
       }
     }
     
@@ -382,8 +407,7 @@
     reader.readAsArrayBuffer(file);
 }
         
-    function updateAllSubForm() {
-        // A. 重新初始化資料箱子
+    function updateAllSubForm(skipSaveToast = false) {
         machineRecords = [];
         let summaryByPrice = {
           20:{pcs: 0, coins: 0},
@@ -400,7 +424,6 @@
         let grandTotalPrice = 0;
         let grandTotalCoin = 0;
 
-        // B. 跑一次迴圈，只做「拿資料」跟「存資料」
         for (let i = 1; i <= currentFormCount; i++) {
             const headValue = document.querySelector(`#formNumText${i}`).value.trim();
             let pageTotalPcs = 0;
@@ -413,7 +436,7 @@
                 const priceInput = document.querySelector(`#price_${i}_${a}`);
                 const pcsInput = document.querySelector(`#pcs_${i}_${a}`);
                 const coinPcsInput = document.querySelector(`#coinPcs_${i}_${a}`);
-                // 自動帶入價格邏輯
+                
                 if (barCode && barcodePriceMap[barCode] && !priceInput.value.trim()) {
                     priceInput.value = barcodePriceMap[barCode];
                 }
@@ -427,7 +450,6 @@
                
                 const rowSum = price * pcs;
 
-                // 把這台機器的狀態存進「箱子」 (這裡不會有找不到變數的問題)
                   const record = {
                     title: `TK0${headValue}-${a}`,
                     barcode: barCode || "0",
@@ -440,7 +462,6 @@
                 if (target) {
                   target.innerText = record.title;
                 }
-                // 計算累加值
                 pageTotalPcs += pcs;
                 pageTotalPrice += rowSum;
                 pageTotalCoin += coinPcs;
@@ -449,7 +470,6 @@
                 }
                     summaryByPrice[price].pcs += pcs;
                     summaryByPrice[price].coins += coinPcs;
-                // 更新「單行」的 DOM 顯示 (僅視覺回饋)
                 const totalSpan = document.querySelector(`#total_${i}_${a}`);
                 if (totalSpan) {
                     totalSpan.innerText = rowSum;
@@ -457,7 +477,6 @@
                 }
             }
 
-            // 更新「該頁頁尾」的 DOM 顯示
             document.querySelector(`#thisFormSum${i}`).innerHTML = 
                 `<hr>總數 <span class="pcsNum">${pageTotalPcs}</span> 隻 - 代幣 <span class="coinPcsNum">${pageTotalCoin}</span> 個 - 共 $ <span class="priceNum">${pageTotalPrice}</span>`;
             
@@ -466,13 +485,10 @@
             grandTotalCoin += pageTotalCoin;
         }
         
-        saveToStorage();
-        // C. 更新最下方的總計 (傳入算好的資料)
+        saveToStorage(skipSaveToast);
         renderSummary(grandTotalPcs, grandTotalPrice, grandTotalCoin, summaryByPrice);
     }
 
-  
-// --- 3. 畫面顯示邏輯 (只負責印出東西) ---
     function renderSummary(pcs, price, coins, summary) {
         totalBg.style.display = "flex";
         // 使用 map 把物件轉成 HTML 字串，非常優雅！
@@ -483,8 +499,7 @@
         allFormsTotal.innerHTML = `扭蛋共 <span class="pcsNum">${pcs}</span> 隻，代幣共 <span class="coinPcsNum">${coins}</span> 個，銷售 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
     
-        //保存到localStorage
-  function saveToStorage() {
+  function saveToStorage(skipToast = false) {
     // 1. 準備好大箱子
     let saveData = {
         location: document.querySelector('#location').value,
@@ -493,18 +508,18 @@
         inputs: {}
     };
 
-    // 2. 收集畫面上所有輸入框的值 (利用它們的 id)
     const allInputs = document.querySelectorAll('input');
     allInputs.forEach(input => {
         if (input.id && input.type !== 'file') { 
-          // 只要有 id 的格子和不是file我們就存
             saveData.inputs[input.id] = input.value;
         }
     });
+    
+        if (!skipToast){
+      showSaveToast("💾 已自動存檔", 'success');
+    }
 
-    // 3. 打包成 JSON 並存入 localStorage
     localStorage.setItem('gachaTokenSaveData', JSON.stringify(saveData));
-    console.log(saveData);
   }
     
     
@@ -583,9 +598,9 @@
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
         XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
+        showSaveToast(`📤 已匯出 ${locationName}(${dateText})-銷數`, 'info');
   }
     
-// --- 4. 匯出邏輯 (現在超級簡單！) ---
     function exportCSVOut() {
         const locationName = document.querySelector('#location').value.trim();
         let dateText = document.querySelector('#markDate').value.trim();
@@ -601,7 +616,6 @@
     }
         if (!locationName) return alert("請輸入地點");
         if (!dateText) return alert("請輸入抄數日期");
-        // 不再需要 for 迴圈讀取 DOM！直接讀取 machineRecords
         const excelData = [
             ["盈喜澳門一人有限公司"],
             [],
@@ -615,7 +629,6 @@
           let grandTotalPrice = 0;
           let summaryByPrice = {};
 
-        // 使用 forEach 把箱子裡的資料倒出來
         machineRecords.forEach(m => {
             excelData.push([m.title, m.barcode, m.price, m.pcs, m.coinPcs, m.total]);
             
@@ -641,21 +654,47 @@
         excelData.push(["總計結果"]);
         excelData.push(["扭蛋總數", "代幣總數", "總金額"]);
         excelData.push([`${grandTotalPcs}隻`,`${grandTotalCoin}個`, `MOP ${grandTotalPrice}`]);
-        // 下載檔案 (XLSX 邏輯保持不變)
         const workbook = XLSX.utils.book_new();
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
+        
+        sheet['!cols'] = [
+            { wch: 15 }, 
+            { wch: 18 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 15 }
+        ];
+        sheet['!merges'] = [
+            { 
+              s: { r: 0, c: 0 },
+              e: { r: 0, c: 1 }
+            }
+        ];
+        
         XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
+        showSaveToast(`📤 已匯出 ${locationName}(${dateText})-扭蛋記錄`, 'info');
     }
     
-   window.onload = loadFromStorage;
-    
-    window.addEventListener("beforeunload", (event) => {
+   window.addEventListener("beforeunload", (event) => {
      event.preventDefault();
      event.returnValue = "";
   });
 
-
+   window.onload = loadFromStorage;
+   window.showSaveToast = showSaveToast;
+   window.addForm = addForm;
+   window.getSingleFormHTML = getSingleFormHTML;
+   window.appendOneForm = appendOneForm;
+   window.removeLastForm = removeLastForm;
+   window.importBarcodeMap = importBarcodeMap;
+   window.updateAllSubForm = updateAllSubForm;
+   window.renderSummary = renderSummary;
+   window.saveToStorage = saveToStorage;
+   window.exportCSV = exportCSV;
+   window.exportCSVOut = exportCSVOut;
+  })();
   </script>
 </body>
 </html>
