@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>📊 扭蛋對照表 Excel 轉 JSON 轉譯器</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'PingFang TC', 'Noto Sans TC', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 20px 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        /* 拖曳上傳區 */
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: #f5f3ff;
+        }
+
+        .drop-zone p {
+            font-size: 14px;
+            color: var(--text-sub);
+            margin-top: 8px;
+        }
+
+        .drop-zone span {
+            font-size: 36px;
+            display: block;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* 欄位對齊提示 */
+        .mapping-info {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--text-sub);
+            display: none;
+            border: 1px solid var(--border);
+        }
+
+        /* 預覽區域 */
+        .preview-area {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+
+        .count-badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+
+        pre {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 16px;
+            border-radius: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            text-align: left;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 控制按鈕 */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        button {
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-copy {
+            background-color: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .btn-download {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-download:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* 吐司提示框 */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 對照表 Excel 轉 JSON 轉譯器</h1>
+            <p>將帶有 barcode 與 price 欄位的 Excel/CSV 轉成 data.json</p>
+        </div>
+
+        <div class="drop-zone" id="drop-zone" onclick="triggerFileInput()">
+            <span>📁</span>
+            <p>點擊選取或拖曳 <b>.xlsx / .csv</b> 檔案到此處</p>
+            <input type="file" id="file-input" accept=".xlsx, .xls, .csv" onchange="handleFile(this.files)">
+        </div>
+
+        <div class="mapping-info" id="mapping-info"></div>
+
+        <div class="preview-area" id="preview-area">
+            <div class="preview-header">
+                <div class="preview-title">轉換結果預覽 (data.json)</div>
+                <div class="count-badge" id="count-badge">0 筆資料</div>
+            </div>
+            <pre><code id="json-output"></code></pre>
+
+            <div class="btn-group">
+                <button class="btn-copy" onclick="copyToClipboard()">📋 複製 JSON</button>
+                <button class="btn-download" onclick="downloadJsonFile()">💾 下載 data.json</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">已複製到剪貼簿 🚀</div>
+
+    <script>
+        let resultJsonString = "";
+
+        function triggerFileInput() {
+            document.getElementById('file-input').click();
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFile(files);
+        });
+
+        function handleFile(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                try {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet);
+                    processData(rawRows);
+                } catch (err) {
+                    alert("檔案讀取失敗！請確保檔案是正確的 Excel 或 CSV。");
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processData(rows) {
+            if (rows.length === 0) {
+                alert("噢咚！檔案中沒有偵測到任何資料列！");
+                return;
+            }
+
+            const sample = rows[0];
+            let barcodeKey = null;
+            let priceKey = null;
+
+            Object.keys(sample).forEach(key => {
+                const lowerKey = key.toLowerCase().trim();
+                if (lowerKey === 'barcode' || lowerKey === '條碼' || lowerKey.includes('code')) {
+                    barcodeKey = key;
+                }
+                if (lowerKey === 'price' || lowerKey === '價格' || lowerKey === '價錢') {
+                    priceKey = key;
+                }
+            });
+
+            const keys = Object.keys(sample);
+            if (!barcodeKey && keys.length > 0) barcodeKey = keys[0];
+            if (!priceKey && keys.length > 1) priceKey = keys[1];
+
+            const cleanData = [];
+            rows.forEach((row, index) => {
+                let barcodeVal = row[barcodeKey];
+                let priceVal = row[priceKey];
+
+                if (barcodeVal !== undefined && priceVal !== undefined) {
+                    const cleanBarcode = String(barcodeVal).trim();
+                    const cleanPrice = Number(String(priceVal).replace(/[^\d.]/g, ''));
+
+                    // 只加入合法的資料
+                    if (cleanBarcode && !isNaN(cleanPrice)) {
+                        cleanData.push({
+                            barcode: cleanBarcode,
+                            price: cleanPrice
+                        });
+                    }
+                }
+            });
+
+            const mappingInfo = document.getElementById('mapping-info');
+            mappingInfo.style.display = 'block';
+            mappingInfo.innerHTML = `
+                📌 <b>自動欄位匹配狀態：</b><br>
+                • 條碼欄位偵測為：<code>${barcodeKey || '未找到'}</code><br>
+                • 價格欄位偵測為：<code>${priceKey || '未找到'}</code><br>
+                <small style="color: #64748b;">(如果偵測不正確，請將您的 Excel 標頭直接命名成 "barcode" 與 "price" 後重新上傳喔！)</small>
+            `;
+
+            resultJsonString = JSON.stringify(cleanData, null, 2);
+            document.getElementById('json-output').textContent = resultJsonString;
+            document.getElementById('count-badge').textContent = `${cleanData.length} 筆對照資料`;
+            document.getElementById('preview-area').style.display = 'block';
+            
+            showToast("轉換成功 🎉");
+        }
+
+        function copyToClipboard() {
+            if (!resultJsonString) return;
+
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = resultJsonString;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            tempTextArea.setSelectionRange(0, 99999); // 對於行動裝置
+            
+            try {
+                document.execCommand('copy');
+                showToast("已成功複製到剪貼簿 🚀");
+            } catch (err) {
+                alert("複製失敗，請手動全選預覽框內的文字進行複製。");
+            }
+            document.body.removeChild(tempTextArea);
+        }
+
+        function downloadJsonFile() {
+            if (!resultJsonString) return;
+            const blob = new Blob([resultJsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
