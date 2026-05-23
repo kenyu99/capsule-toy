@@ -135,7 +135,7 @@
     #saveToast {
     position: fixed;
     top: 20px;
-    right: -250px;
+    right: -300px;
     color: white;
     padding: 10px 20px;
     border-radius: 20px;
@@ -150,8 +150,8 @@
   right: 20px !important; 
   }
 
-.toast-success { background: #28a745;}
-.toast-info { background: #17a2b8;}
+  .toast-success { background: #28a745;}
+  .toast-info { background: #17a2b8;}
 
   </style>
 <body>
@@ -206,14 +206,14 @@
      {locationName: "栢蕙", count: 2},
      {locationName: "官也街", count: 2},
      {locationName: "媽閣輕軌站", count: 2},
-     {locationName: "濠尚POKEMON", count: 3},
+     {locationName: "濠尚Pokémon專區", count: 3},
      {locationName: "美副將", count: 4},
-     {locationName: "濠尚", count: 4},
+     {locationName: "玩具反斗城-濠尚", count: 4},
      {locationName: "營地街", count: 6},
-     {locationName: "濠尚G層", count: 7},
-     {locationName: "新八佰伴", count: 9},
-     {locationName: "上葡京新八佰伴", count: 9},
-     {locationName: "影滙", count:8}
+     {locationName: "玩具反斗城-濠尚G層", count: 7},
+     {locationName: "新八佰伴總店", count: 9},
+     {locationName: "新八佰伴-上葡京", count: 8},
+     {locationName: "玩具反斗城-新濠影滙", count:8}
      ];
    
    let toastTimeout;
@@ -419,6 +419,33 @@
     reader.readAsArrayBuffer(file);
 }
         
+    async function loadGachaDataFromGitHub() {
+        try {
+            const response = await fetch('data.json');
+            if (!response.ok) throw new Error('網路請求失敗');
+            
+            const jsonArray = await response.json();
+            
+            jsonArray.forEach(item => {
+                if (item.barcode) {
+                    const cleanCode = String(item.barcode).trim();
+                    const cleanPrice = Number(item.price) || 0;
+                    barcodePriceMap[cleanCode] = cleanPrice;
+                }
+            });
+            
+            localStorage.setItem('saveBarcodePriceMap', JSON.stringify(barcodePriceMap));
+            
+            showSaveToast(`☁️ 已自動同步 GitHub 最新 ${Object.keys(barcodePriceMap).length} 筆條碼`, 'success');
+            
+            updateAllSubForm(true);
+            
+        } catch (error) {
+            console.warn('⚠️ 無法連線至 GitHub 更新對照表，將繼續沿用本地快取紀錄。', error);
+        }
+    }
+
+    
     function updateAllSubForm(skipSaveToast = false) {
         machineRecords = [];
         let summaryByPrice = { 20:0, 30:0, 40:0, 50:0, 60:0, 80:0, 100:0, 150:0 };
@@ -484,7 +511,7 @@
         allFormsTotal.innerHTML = `共 <span class="pcsNum">${pcs}</span> 個，共 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
     
-  function saveToStorage(skipToast = false) {
+   function saveToStorage(skipToast = false) {
     let saveData = {
         location: document.querySelector('#location').value,
         markDate: document.querySelector('#markDate').value,
@@ -498,6 +525,7 @@
             saveData.inputs[input.id] = input.value;
         }
     });
+    
     if (!skipToast){
       showSaveToast("💾 已自動存檔", 'success');
     }
@@ -656,7 +684,29 @@
      event.returnValue = "";
   });
   
-    window.onload = loadFromStorage;
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const active = document.activeElement;
+            
+            if (active && active.tagName === 'INPUT') {
+                e.preventDefault(); 
+                
+                const focusableInputs = Array.from(document.querySelectorAll('input:not([type="file"]):not([disabled])'));
+                
+                const index = focusableInputs.indexOf(active);
+                if (index > -1 && index < focusableInputs.length - 1) {
+                    focusableInputs[index + 1].focus();
+                    focusableInputs[index + 1].select();
+                }
+            }
+        }
+    });
+
+  
+    window.onload = async () => {
+        loadFromStorage();         
+        await loadGachaDataFromGitHub(); 
+        };
     window.showSaveToast = showSaveToast;
     window.addForm = addForm;
     window.getSingleFormHTML = getSingleFormHTML;
