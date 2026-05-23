@@ -407,6 +407,32 @@
     reader.readAsArrayBuffer(file);
 }
         
+    async function loadGachaDataFromGitHub() {
+        try {
+            const response = await fetch('data.json');
+            if (!response.ok) throw new Error('網路請求失敗');
+            
+            const jsonArray = await response.json();
+            
+            jsonArray.forEach(item => {
+                if (item.barcode) {
+                    const cleanCode = String(item.barcode).trim();
+                    const cleanPrice = Number(item.price) || 0;
+                    barcodePriceMap[cleanCode] = cleanPrice;
+                }
+            });
+            
+            localStorage.setItem('saveBarcodePriceMap', JSON.stringify(barcodePriceMap));
+            
+            showSaveToast(`☁️ 已自動同步 GitHub 最新 ${Object.keys(barcodePriceMap).length} 筆條碼`, 'success');
+            
+            updateAllSubForm(true);
+            
+        } catch (error) {
+            console.warn('⚠️ 無法連線至 GitHub 更新對照表，將繼續沿用本地快取紀錄。', error);
+        }
+    }
+        
     function updateAllSubForm(skipSaveToast = false) {
         machineRecords = [];
         let summaryByPrice = {
@@ -682,7 +708,10 @@
      event.returnValue = "";
   });
 
-   window.onload = loadFromStorage;
+  window.onload = async () => {
+    loadFromStorage();         
+    await loadGachaDataFromGitHub(); 
+  };
    window.showSaveToast = showSaveToast;
    window.addForm = addForm;
    window.getSingleFormHTML = getSingleFormHTML;
