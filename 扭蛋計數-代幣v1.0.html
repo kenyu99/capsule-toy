@@ -598,7 +598,7 @@
         const sheet = XLSX.utils.aoa_to_sheet(excelData);
         XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
-        showSaveToast(`📤 已匯出 ${locationName}(${dateText})-銷數`, 'info');
+        showSaveToast(`📤 已匯出 ${locationName}-銷數`, 'info');
   }
     
     function exportCSVOut() {
@@ -674,7 +674,7 @@
         
         XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
-        showSaveToast(`📤 已匯出 ${locationName}(${dateText})-扭蛋記錄`, 'info');
+        showSaveToast(`📤 已匯出 ${locationName}-扭蛋記錄`, 'info');
     }
     
    window.addEventListener("beforeunload", (event) => {
