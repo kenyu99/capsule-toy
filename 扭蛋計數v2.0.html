@@ -1,168 +1,392 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <title>扭蛋計數</title>
   <style>
-  
+    /* 現代化漸層背景與重設 */
     body {
-      background: #0072E3;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      color: #333;
+      min-height: 100vh;
+      box-sizing: border-box;
     }
-    
+
     h1 {
       text-align: center;
-      color: white;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      margin: 15px 0 25px 0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
-    
-    input {
-      width: 35px;
-      text-align: center;
-      font-size: 12px;
+
+    /* 按鈕基礎樣式 */
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
-    
-    fieldset {
+
+    button:active {
+      transform: scale(0.97);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    }
+
+    button:disabled {
+      background: #cccccc !important;
+      color: #888888 !important;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* 頂部操作區 */
+    #interactiveButton {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    #interactiveButton button {
+      flex: 1;
+      min-width: 100px;
+      background: #ffffff;
+      color: #1e3c72;
+    }
+
+    #interactiveButton button:hover {
+      background: #f0f4f8;
+    }
+
+    #fromTop {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    #addFormText {
+      flex: 1;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 14px;
+      padding: 0 12px;
+      box-sizing: border-box;
       text-align: center;
-      margin: 10px;
+      transition: all 0.2s;
     }
-    
-    legend {margin-bottom: 5px;}
-    
-    footer {
-      float: right;
-      font-size: 7px;
-      color: rgba(255,255,255,.5);
+
+    #addFormText::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
     }
-    
-    #allForms {
-      display: none;
-      flex-direction: column;
-      background: rgba(255,255,255,.7);
-      border: 2px solid #000;
-      border-radius: 10px;
-      padding: 5px;
-      margin: 10px 0;
+
+    #addFormText:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.3);
+      border-color: #ffffff;
     }
-    
-    #fromTop, #interactiveButton{
-      display:flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
+
+    #addForm {
+      background: #00c6ff;
+      background: linear-gradient(to right, #0072ff, #00c6ff);
+      color: white;
+      height: 42px;
+      white-space: nowrap;
     }
-    
+
+    /* 增減頁數按鈕 */
     #adjustButtons {
       display: none;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
       gap: 10px;
     }
+
     .btn-add {
       flex: 1;
-      padding: 8px;
-      background: #28a745;
+      background: #2ecc71;
       color: white;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
     }
+
+    .btn-add:hover {
+      background: #27ae60;
+    }
+
     .btn-remove {
       flex: 1;
-      padding: 8px;
-      background: #dc3545;
+      background: #e74c3c;
       color: white;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
     }
-    
-    .container_All {
+
+    .btn-remove:hover {
+      background: #c0392b;
+    }
+
+    /* 表格容器與卡片設計 */
+    #allForms {
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    fieldset {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      border-radius: 12px;
+      padding: 15px 12px;
+      margin: 0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
     }
-    
+
+    legend {
+      background: rgba(85,145,215,1);
+      color: #ffffff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
+
+    legend input {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-align: center;
+      width: 70px !important;
+      font-size: 13px !important;
+      transition: all 0.2s;
+    }
+
+    legend input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.3);
+      border-color: #ffffff;
+    }
+
+    /* 輸入欄位通用樣式 */
+    input {
+      border: 1px solid #ccd1d9;
+      border-radius: 6px;
+      padding: 6px;
+      font-size: 13px;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #1e3c72;
+      box-shadow: 0 0 0 2px rgba(30, 60, 114, 0.15);
+    }
+
+    /* 每一列的排版 */
     .priceDownAll {
       display: flex;
-      justify-content: space-around;
-      gap: 5px;
-      margin-bottom: 10px;
-      font-size: 10px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #e6e9ed;
     }
-    
+
+    .priceDownAll:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .priceDownAll span[id^="win_"] {
+      font-size: 11px;
+      color: #656d78;
+      font-weight: bold;
+      min-width: 55px;
+    }
+
+    .barcodeBar {
+      flex: 2;
+      min-width: 70px;
+      max-width: 110px;
+      text-align: center;
+    }
+
+    input[id^="pcs_"] {
+      flex: 1;
+      min-width: 40px;
+      max-width: 55px;
+      text-align: center;
+    }
+
+    input[id^="price_"] {
+      flex: 1;
+      min-width: 40px;
+      max-width: 55px;
+      text-align: center;
+    }
+
+    .priceDownAll div {
+      font-size: 12px;
+      font-weight: bold;
+      color: #434a54;
+      min-width: 45px;
+      text-align: right;
+    }
+
+    /* 單頁小計 */
+    div[id^="thisFormSum"] {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #e6e9ed;
+      text-align: right;
+      font-size: 13px;
+      color: #434a54;
+      font-weight: 500;
+    }
+
+    hr {
+      display: none; /* 移除舊的 hr 線條，改用 CSS border 控制 */
+    }
+
+    .pcsNum {
+      color: #0072ff;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .priceNum {
+      color: #2ecc71;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* 統計區域 */
     .totalBg {
       display: none;
-      padding: 5px;
-      border: 2px solid #000;
-      border-radius: 10px;
-      background: rgba(255,255,255,.7);
+      margin-top: 10px;
     }
-    #totalPcsPrice {width: 100%;text-align:center;}
+
+    #totalPcsPrice {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    #totalPcsPrice legend {
+      background: #2ecc81;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #location, #markDate {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      border-radius: 6px;
+      height: 28px;
+      width: 50% !important;
+      font-size: 12px;
+      padding: 0 8px;
+    }
     
-    #addFormText {width:100px;text-align:center;}
-    
-    #location {
-      width: 100px;
-      height: 30px;
+    #location::placeholder, #markDate::placeholder {
+      color: rgba(255, 255, 255, 0.7);
       text-align: center;
-      margin: 0 5px;
     }
-    
-    #markDate {
-      width: 120px;
-      height: 30px;
+
+    #location:focus, #markDate:focus {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: white;
+    }
+
+    #allFormsTotal {
+      font-size: 14px;
+      line-height: 1.6;
       text-align: center;
-      margin: 0 5px;
+      color: #333333;
     }
-    
-    .formNum {
-      padding: 0 10px;
+
+    #allFormsTotal hr {
+      display: block;
+      border: none;
+      border-top: 1px solid #e6e9ed;
+      margin: 10px 0;
     }
-    
-    .pcsNum {
-      color: blue;
-      font-weight: bold;
-    }
-    
-    .priceNum {
-      color: green;
-      font-weight: bold;
-    }
-    .barcodeBar {
-      width: 100px;
-    }
-    
+
+    /* Toast 提示框 */
     #saveToast {
-    position: fixed;
-    top: 20px;
-    right: -300px;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-weight: bold;
-    font-size: 14px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    z-index: 9999;
-    transition: right 0.4s ease-out; 
-  }
+      position: fixed;
+      top: 20px;
+      right: -320px;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 9999;
+      transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
 
-  .show-toast {
-  right: 20px !important; 
-  }
+    .show-toast {
+      right: 20px !important;
+    }
 
-  .toast-success { background: #28a745;}
-  .toast-info { background: #17a2b8;}
+    .toast-success {
+      background: linear-gradient(135deg, #11998e, #38ef7d);
+    }
 
+    .toast-info {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+    }
+
+    /* 頁尾 */
+    footer {
+      text-align: right;
+      margin-top: 25px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.5px;
+    }
   </style>
+</head>
 <body>
   <div id="saveToast"></div>
 
   <h1>扭蛋計數</h1>
-    <div id="interactiveButton">
-   <button onclick="exportCSV()">📤 匯出(銷數)</button>
-   <button onclick="exportCSVOut()">📤 匯出(記錄)</button>
-   <input type="file" id="importMapFile" accept=".xlsx" style="display:none;" onchange="importBarcodeMap(event)">
-   <button onclick="document.querySelector('#importMapFile').click()">📥  匯入對照表</button>
+  <div id="interactiveButton">
+    <button onclick="exportCSV()">📤 匯出(銷數)</button>
+    <button onclick="exportCSVOut()">📤 匯出(記錄)</button>
+    <input type="file" id="importMapFile" accept=".xlsx" style="display:none;" onchange="importBarcodeMap(event)">
+    <button onclick="document.querySelector('#importMapFile').click()">📥 匯入對照表</button>
   </div>
   
   <div id="fromTop">
@@ -171,103 +395,104 @@
   </div>
 
   <div id="adjustButtons">
-    <button class="btn-add" onclick="appendOneForm()">➕ 追加一頁 (不重置數據)</button>
+    <button class="btn-add" onclick="appendOneForm()">➕ 追加一頁 (不重置)</button>
     <button class="btn-remove" onclick="removeLastForm()">➖ 刪除末頁</button>
   </div>
 
   <div id="allForms"></div>
-  <div class="totalBg">
-  <fieldset id="totalPcsPrice">
-    <legend>
-      <input type="text" placeholder="抄數地點" id="location">
-     <input type="text" placeholder="上次日期 - 今天日期" id="markDate">
-    統計</legend>
-  <div id="allFormsTotal"></div>
-  </fieldset>
-  </div>
-   <footer>create by KinU 2026</footer>
 
-  
+  <div class="totalBg">
+    <fieldset id="totalPcsPrice">
+      <legend>
+        <input type="text" placeholder="抄數地點" id="location">
+        <input type="text" placeholder="上次日期 - 今天日期" id="markDate">
+      </legend>
+      <div id="allFormsTotal"></div>
+    </fieldset>
+  </div>
+
+  <footer>create by KinU 2026</footer>
+
   <script>
   (() => {
     const allForms = document.querySelector('#allForms');
-   const allFormsTotal = document.querySelector('#allFormsTotal');
-   const totalBg = document.querySelector('.totalBg');
+    const allFormsTotal = document.querySelector('#allFormsTotal');
+    const totalBg = document.querySelector('.totalBg');
     const toast = document.querySelector('#saveToast');
     
-   let currentFormCount = 0;
-   let machineRecords = [];
-   let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
+    let currentFormCount = 0;
+    let machineRecords = [];
+    let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
    
-   const formList = [
-     {locationName: "太陽冰室", count: 1},
-     {locationName: "致富", count: 2},
-     {locationName: "時代", count: 2},
-     {locationName: "栢蕙", count: 2},
-     {locationName: "官也街", count: 2},
-     {locationName: "媽閣輕軌站", count: 2},
-     {locationName: "濠尚Pokémon專區", count: 3},
-     {locationName: "美副將", count: 4},
-     {locationName: "玩具反斗城-濠尚", count: 4},
-     {locationName: "營地街", count: 6},
-     {locationName: "玩具反斗城-濠尚G層", count: 7},
-     {locationName: "新八佰伴總店", count: 9},
-     {locationName: "新八佰伴-上葡京", count: 8},
-     {locationName: "玩具反斗城-新濠影滙", count:8}
-     ];
+    const formList = [
+      {locationName: "太陽冰室", count: 1},
+      {locationName: "致富", count: 2},
+      {locationName: "時代", count: 2},
+      {locationName: "栢蕙", count: 2},
+      {locationName: "官也街", count: 2},
+      {locationName: "媽閣輕軌站", count: 2},
+      {locationName: "濠尚Pokémon專區", count: 3},
+      {locationName: "美副將", count: 4},
+      {locationName: "玩具反斗城-濠尚", count: 4},
+      {locationName: "營地街", count: 6},
+      {locationName: "玩具反斗城-濠尚G層", count: 7},
+      {locationName: "新八佰伴總店", count: 9},
+      {locationName: "新八佰伴-上葡京", count: 8},
+      {locationName: "玩具反斗城-新濠影滙", count:8}
+    ];
    
-   let toastTimeout;
+    let toastTimeout;
    
-  function loadFromStorage() {
-    const savedString = localStorage.getItem('gachaSaveData');
-    if (!savedString) return;
-    const saveData = JSON.parse(savedString);
+    function loadFromStorage() {
+      const savedString = localStorage.getItem('gachaSaveData');
+      if (!savedString) return;
+      const saveData = JSON.parse(savedString);
 
-    document.querySelector('#location').value = saveData.location;
-    document.querySelector('#markDate').value = saveData.markDate;
-    currentFormCount = saveData.formCount;
+      document.querySelector('#location').value = saveData.location;
+      document.querySelector('#markDate').value = saveData.markDate;
+      currentFormCount = saveData.formCount;
 
-    if (currentFormCount > 0) {
-        let fullHTML = "";
-        for (let i = 1; i <= currentFormCount; i++) {
-            fullHTML += getSingleFormHTML(i);
-        }
-        allForms.innerHTML = fullHTML;
-        allForms.style.display = "flex";
-        document.querySelector('#adjustButtons').style.display = "flex";
-        document.querySelector('#addForm').disabled = true;
+      if (currentFormCount > 0) {
+          let fullHTML = "";
+          for (let i = 1; i <= currentFormCount; i++) {
+              fullHTML += getSingleFormHTML(i);
+          }
+          allForms.innerHTML = fullHTML;
+          allForms.style.display = "flex";
+          document.querySelector('#adjustButtons').style.display = "flex";
+          document.querySelector('#addForm').disabled = true;
+      }
+      Object.keys(saveData.inputs).forEach(id => {
+          const inputEl = document.querySelector(`#${id}`);
+          if (inputEl && inputEl.type !== 'file') {
+              inputEl.value = saveData.inputs[id];
+          }
+      });
+      showSaveToast('💾 已讀取記錄', 'success');
+      updateAllSubForm(true);
     }
-    Object.keys(saveData.inputs).forEach(id => {
-        const inputEl = document.querySelector(`#${id}`);
-        if (inputEl && inputEl.type !== 'file') {
-            inputEl.value = saveData.inputs[id];
-        }
-    });
-    showSaveToast('💾 已讀取記錄', 'success');
-    updateAllSubForm(true);
-  }
   
-  function showSaveToast(text, type = 'success') {
-    toast.innerText = "";
-    toast.innerText = text;
-    toast.classList.remove('toast-success', 'toast-info');
-    if (type === 'info'){
-    toast.classList.add('toast-info');
-    } else {
-      toast.classList.add('toast-success');
+    function showSaveToast(text, type = 'success') {
+      toast.innerText = "";
+      toast.innerText = text;
+      toast.classList.remove('toast-success', 'toast-info');
+      if (type === 'info'){
+        toast.classList.add('toast-info');
+      } else {
+        toast.classList.add('toast-success');
+      }
+      toast.classList.add('show-toast');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+          toast.classList.remove('show-toast');
+      }, 2000);
     }
-    toast.classList.add('show-toast');
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => {
-        toast.classList.remove('show-toast');
-    }, 2000);
-  }
 
-   function getSingleFormHTML(i) {
+    function getSingleFormHTML(i) {
       let formHTML = `
       <fieldset id="fieldset_page_${i}">
       <legend>
-      <span class="formNum">第${i}頁</span>M0
+      <span class="formNum">第${i}頁</span> M0
       <input type="text" name="form${i}" id="formNumText${i}" oninput="updateAllSubForm()" placeholder="機頭" inputmode="numeric">
       </legend>
       `;
@@ -278,9 +503,11 @@
         const priceTabIndex = 300 + i * 10 + a;
         formHTML += `
         <div class="priceDownAll">
-        <span id="win_${i}_${a}">M0 - ${a}</span>
-        <input class="barcodeBar" id="barCode_${i}_${a}" placeholder="條碼" oninput="updateAllSubForm()" tabindex="${barCodeTabIndex}" inputmode="numeric">-
-        <input id="pcs_${i}_${a}" placeholder="個數" oninput="updateAllSubForm()" tabindex="${pcsTabIndex}" inputmode="numeric">-<input id="price_${i}_${a}" placeholder="價格" oninput="updateAllSubForm()" tabindex="${priceTabIndex}" inputmode="numeric">-<div>$ <span id="total_${i}_${a}">0</span></div>
+        <span id="win_${i}_${a}">M0-${a}</span>
+        <input class="barcodeBar" id="barCode_${i}_${a}" placeholder="條碼" oninput="updateAllSubForm()" tabindex="${barCodeTabIndex}" inputmode="numeric">
+        <input id="pcs_${i}_${a}" placeholder="個數" oninput="updateAllSubForm()" tabindex="${pcsTabIndex}" inputmode="numeric">
+        <input id="price_${i}_${a}" placeholder="價格" oninput="updateAllSubForm()" tabindex="${priceTabIndex}" inputmode="numeric">
+        <div>$ <span id="total_${i}_${a}">0</span></div>
         </div>
         `;
       }
@@ -291,7 +518,7 @@
       </div>
       </fieldset>`;
       return formHTML;
-   }
+    }
    
     function addForm() {
       const addFormText = document.querySelector('#addFormText');
@@ -351,9 +578,8 @@
       currentFormCount++;
       const newFormHTML = getSingleFormHTML(currentFormCount);
       allForms.insertAdjacentHTML('beforeend', newFormHTML);
-      showSaveToast(`📄 已追加第  ${currentFormCount} 頁表格`, 'success');
+      showSaveToast(`📄 已追加第 ${currentFormCount} 頁表格`, 'success');
       updateAllSubForm(true);
-      
     }
 
     function removeLastForm() {
@@ -372,16 +598,16 @@
       }
     }
         
-   function importBarcodeMap(event) {
-     const file = event.target.files[0];
-       if (!file) {
+    function importBarcodeMap(event) {
+      const file = event.target.files[0];
+      if (!file) {
         alert('沒有選擇檔案');
         return;
-    }
+      }
     
-     const reader = new FileReader();
-     barcodePriceMap = {};
-     reader.onload = function(e) {
+      const reader = new FileReader();
+      barcodePriceMap = {};
+      reader.onload = function(e) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
@@ -396,7 +622,6 @@
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
                 const barCode = String(row[0]).trim();
-                
                 const price = Number(row[1]);
                 
                 if (barCode && !isNaN(price)) {
@@ -404,20 +629,16 @@
                 }
             }
             
-            
             alert(`✅ 對照表匯入成功，共 ${Object.keys(barcodePriceMap).length} 個條碼`);
-            console.log('條碼對照表：', barcodePriceMap);
-            
-           localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
-            
+            localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
+            updateAllSubForm(true);
         } catch (error) {
             alert('❌ 檔案格式錯誤，請確認是正確的 .xlsx 檔案');
             console.error(error);
         }
-    };
-    
-    reader.readAsArrayBuffer(file);
-}
+      };
+      reader.readAsArrayBuffer(file);
+    }
         
     async function loadGachaDataFromGitHub() {
         try {
@@ -435,17 +656,13 @@
             });
             
             localStorage.setItem('saveBarcodePriceMap', JSON.stringify(barcodePriceMap));
-            
             showSaveToast(`☁️ 已自動同步 GitHub 最新 ${Object.keys(barcodePriceMap).length} 筆條碼`, 'success');
-            
             updateAllSubForm(true);
-            
         } catch (error) {
             console.warn('⚠️ 無法連線至 GitHub 更新對照表，將繼續沿用本地快取紀錄。', error);
         }
     }
 
-    
     function updateAllSubForm(skipSaveToast = false) {
         machineRecords = [];
         let summaryByPrice = { 20:0, 30:0, 40:0, 50:0, 60:0, 80:0, 100:0, 150:0 };
@@ -467,7 +684,7 @@
                 }
                 const price = Number(priceInput.value.trim()) || 0;
                 const rowSum = price * pcs;
-                  const record = {
+                const record = {
                     title: `M0${headValue}-${a}`,
                     barcode: barCode || "0",
                     price: price,
@@ -483,15 +700,15 @@
                 if (summaryByPrice[price] === undefined) {
                   summaryByPrice[price] = 0;
                 }
-                    summaryByPrice[price] += pcs;
+                summaryByPrice[price] += pcs;
                 const totalSpan = document.querySelector(`#total_${i}_${a}`);
                 if (totalSpan) {
                     totalSpan.innerText = rowSum;
-                    totalSpan.style.color = rowSum > 0 ? "green" : "black";
+                    totalSpan.style.color = rowSum > 0 ? "#2ecc71" : "#434a54";
                 }
             }
             document.querySelector(`#thisFormSum${i}`).innerHTML = 
-                `<hr>總數 <span class="pcsNum">${pageTotalPcs}</span> 隻 - 共 $ <span class="priceNum">${pageTotalPrice}</span>`;
+                `總數 <span class="pcsNum">${pageTotalPcs}</span> 隻 - 共 $ <span class="priceNum">${pageTotalPrice}</span>`;
             
             grandTotalPcs += pageTotalPcs;
             grandTotalPrice += pageTotalPrice;
@@ -505,33 +722,33 @@
         totalBg.style.display = "flex";
         const detailHTML = Object.entries(summary)
             .filter(([p, count]) => count > 0) 
-            .map(([p, count]) => `$<span style="color:red;font-weight:bold;">${p}</span> 共 <span class="pcsNum">${count}</span> 隻`)
+            .map(([p, count]) => `$<span style="color:#e74c3c;font-weight:bold;">${p}</span> 共 <span class="pcsNum">${count}</span> 隻`)
             .join("<br>");
 
         allFormsTotal.innerHTML = `共 <span class="pcsNum">${pcs}</span> 個，共 $ <span class="priceNum">${price}</span><hr>${detailHTML}`;
     }
     
-   function saveToStorage(skipToast = false) {
-    let saveData = {
-        location: document.querySelector('#location').value,
-        markDate: document.querySelector('#markDate').value,
-        formCount: currentFormCount,
-        inputs: {}
-    };
+    function saveToStorage(skipToast = false) {
+      let saveData = {
+          location: document.querySelector('#location').value,
+          markDate: document.querySelector('#markDate').value,
+          formCount: currentFormCount,
+          inputs: {}
+      };
 
-    const allInputs = document.querySelectorAll('input');
-    allInputs.forEach(input => {
-        if (input.id && input.type !== 'file') { 
-            saveData.inputs[input.id] = input.value;
-        }
-    });
-    
-    if (!skipToast){
-      showSaveToast("💾 已自動存檔", 'success');
+      const allInputs = document.querySelectorAll('input');
+      allInputs.forEach(input => {
+          if (input.id && input.type !== 'file') { 
+              saveData.inputs[input.id] = input.value;
+          }
+      });
+      
+      if (!skipToast){
+        showSaveToast("💾 已自動存檔", 'success');
+      }
+      
+      localStorage.setItem('gachaSaveData', JSON.stringify(saveData));
     }
-    
-    localStorage.setItem('gachaSaveData', JSON.stringify(saveData));
-  }
 
     function exportCSV() {
        const locationEl = document.querySelector('#location');
@@ -539,46 +756,46 @@
        const locationName = locationEl.value.trim();
        const dateText = markDateEl.value.trim();
        
-    for (let i = 1; i <= currentFormCount; i++) {
-      const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
-      if (!formTitle) {
-        alert(`第${i}頁未輸入機頭`);
+      for (let i = 1; i <= currentFormCount; i++) {
+        const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
+        if (!formTitle) {
+          alert(`第${i}頁未輸入機頭`);
+          return;
+        }
+      }
+      
+      if (!locationName) {
+        alert("請輸入抄數地點"); 
         return;
       }
-    }
+      
+      if (!dateText) {
+        alert("請輸入日期"); 
+        return;
+      }
     
-    if (!locationName) {
-      alert("請輸入抄數地點"); 
-      return;
-    }
-    
-     if (!dateText) {
-      alert("請輸入日期"); 
-      return;
-    }
-    
-     const excelData = [
-       [
-         "qty",
-       "item code",
-       "barcode",
-       "unit price",
-       "discount percent",
-       "remark",
-       "item type",
-       "item name",
-       "part number",
-       "vendor part number",
-       "customer or vendor",
-       "expiry date",
-       "expiry min months",
-       "expiry max months",
-       "custom lot number",
-       "product price group"
-       ]
+      const excelData = [
+        [
+          "qty",
+          "item code",
+          "barcode",
+          "unit price",
+          "discount percent",
+          "remark",
+          "item type",
+          "item name",
+          "part number",
+          "vendor part number",
+          "customer or vendor",
+          "expiry date",
+          "expiry min months",
+          "expiry max months",
+          "custom lot number",
+          "product price group"
+        ]
       ];
     
-        machineRecords.forEach(m => {
+      machineRecords.forEach(m => {
         excelData.push([
           m.pcs,
           "",
@@ -596,15 +813,15 @@
           "",
           "",
           ""
-          ]);
-       });
+        ]);
+      });
    
-        const workbook = XLSX.utils.book_new();
-        const sheet = XLSX.utils.aoa_to_sheet(excelData);
-        XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
-        XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
-         showSaveToast(`📤 已匯出 ${locationName}-銷數`, 'info');
-  }
+      const workbook = XLSX.utils.book_new();
+      const sheet = XLSX.utils.aoa_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
+      XLSX.writeFile(workbook, `${locationName}(${dateText})-銷數.xlsx`);
+      showSaveToast(`📤 已匯出 ${locationName}-銷數`, 'info');
+    }
     
     function exportCSVOut() {
         const locationName = document.querySelector('#location').value.trim();
@@ -627,9 +844,9 @@
             [],
             ["機身編號", "貨品編號", "價格", "個數", "單項銷售"]
         ];
-          let grandTotalPcs = 0;
-          let grandTotalPrice = 0;
-          let summaryByPrice = {};
+        let grandTotalPcs = 0;
+        let grandTotalPrice = 0;
+        let summaryByPrice = {};
 
         machineRecords.forEach(m => {
             excelData.push([m.title, m.barcode, m.price, m.pcs, m.total]);
@@ -676,13 +893,13 @@
 
         XLSX.utils.book_append_sheet(workbook, sheet, "扭蛋記錄");
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
-       showSaveToast(`📤 已匯出 ${locationName}-扭蛋記錄`, 'info');
+        showSaveToast(`📤 已匯出 ${locationName}-扭蛋記錄`, 'info');
     }
     
     window.addEventListener("beforeunload", (event) => {
-     event.preventDefault();
-     event.returnValue = "";
-  });
+       event.preventDefault();
+       event.returnValue = "";
+    });
   
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -690,9 +907,7 @@
             
             if (active && active.tagName === 'INPUT') {
                 e.preventDefault(); 
-                
                 const focusableInputs = Array.from(document.querySelectorAll('input:not([type="file"]):not([disabled])'));
-                
                 const index = focusableInputs.indexOf(active);
                 if (index > -1 && index < focusableInputs.length - 1) {
                     focusableInputs[index + 1].focus();
@@ -702,11 +917,11 @@
         }
     });
 
-  
     window.onload = async () => {
         loadFromStorage();         
         await loadGachaDataFromGitHub(); 
-        };
+    };
+
     window.showSaveToast = showSaveToast;
     window.addForm = addForm;
     window.getSingleFormHTML = getSingleFormHTML;
@@ -719,8 +934,7 @@
     window.exportCSV = exportCSV;
     window.exportCSVOut = exportCSVOut;
     
-})();
+  })();
   </script>
 </body>
 </html>
-
