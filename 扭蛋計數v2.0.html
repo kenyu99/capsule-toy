@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- 引入 html2pdf.js 解決中文亂碼，確保完美排版 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <title>扭蛋計數</title>
   <style>
     /* 現代化漸層背景與重設 */
@@ -385,6 +387,7 @@
   <div id="interactiveButton">
     <button onclick="exportCSV()">📤 匯出(銷數)</button>
     <button onclick="exportCSVOut()">📤 匯出(記錄)</button>
+    <button onclick="exportPDFOut()">📤 匯出(PDF)</button>
     <input type="file" id="importMapFile" accept=".xlsx" style="display:none;" onchange="importBarcodeMap(event)">
     <button onclick="document.querySelector('#importMapFile').click()">📥 匯入對照表</button>
   </div>
@@ -433,9 +436,9 @@
       {locationName: "媽閣輕軌站", count: 2},
       {locationName: "濠尚Pokémon專區", count: 3},
       {locationName: "美副將", count: 4},
-      {locationName: "嘩嘩-濠尚", count: 4},
+      {locationName: "玩具反斗城-濠尚", count: 4},
       {locationName: "營地街", count: 6},
-      {locationName: "玩具反斗城-濠尚G層", count: 7},
+      {locationName: "嘩嘩-濠尚G層", count: 7},
       {locationName: "新八佰伴總店", count: 9},
       {locationName: "新八佰伴-上葡京", count: 8},
       {locationName: "玩具反斗城-新濠影滙", count:8}
@@ -895,6 +898,160 @@
         XLSX.writeFile(workbook, `${locationName}(${dateText})-扭蛋記錄.xlsx`);
         showSaveToast(`📤 已匯出 ${locationName}-扭蛋記錄`, 'info');
     }
+
+    function exportPDFOut() {
+        const locationName = document.querySelector('#location').value.trim();
+        const dateText = document.querySelector('#markDate').value.trim();
+        
+        for (let i = 1; i <= currentFormCount; i++) {
+          const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
+          if (!formTitle) {
+            alert(`第${i}頁未輸入機頭`);
+            return;
+          }
+        }
+        if (!locationName) return alert("請輸入地點");
+        if (!dateText) return alert("請輸入抄數日期");
+
+        // 建立一個用於渲染 PDF 的隱藏乾淨容器
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.padding = '25px';
+        pdfContainer.style.background = '#ffffff';
+        pdfContainer.style.color = '#333333';
+        pdfContainer.style.fontFamily = '"Microsoft JhengHei", "Heiti TC", sans-serif';
+        pdfContainer.style.fontSize = '11px';
+
+        // 1. 標題與公司名
+        let htmlContent = `
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0 0 3px 0; font-size: 18px; color: #1e3c72;">盈喜澳門一人有限公司</h2>
+                <h3 style="margin: 0; font-size: 14px; color: #555;">扭蛋抄數記錄報表</h3>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 2px solid #1e3c72; padding-bottom: 5px; font-weight: bold; font-size: 12px;">
+                <span>地點：${locationName}</span>
+                <span>日期：${dateText}</span>
+            </div>
+        `;
+
+        // 2. 主明細表格 (加入 CSS 避免 tr 被截斷)
+        htmlContent += `
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; text-align: center; font-size: 10px;">
+                <thead>
+                    <tr style="background-color: #1e3c72; color: #ffffff; font-weight: bold;">
+                        <th style="border: 1px solid #dddddd; padding: 5px;">機身編號</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">貨品編號</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">價格</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">個數</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">單項銷售</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        let grandTotalPcs = 0;
+        let grandTotalPrice = 0;
+        let summaryByPrice = {};
+
+        machineRecords.forEach((m, idx) => {
+            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+            // 在每一行 tr 加上 style="page-break-inside: avoid;" 確保單行絕不跨頁被砍斷
+            htmlContent += `
+                <tr style="background-color: ${rowBg}; page-break-inside: avoid;">
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.title}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.barcode}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">MOP ${m.price}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.pcs} 隻</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px; font-weight: bold; color: ${m.total > 0 ? '#2ecc71' : '#333'}">MOP ${m.total}</td>
+                </tr>
+            `;
+            grandTotalPcs += m.pcs;
+            grandTotalPrice += m.total;
+            if(m.pcs > 0) {
+                if(summaryByPrice[m.price] === undefined) {
+                    summaryByPrice[m.price] = 0;
+                }
+                summaryByPrice[m.price] += m.pcs;
+            }
+        });
+
+        htmlContent += `
+                </tbody>
+            </table>
+        `;
+
+        // 3. 價格分類統計表
+        htmlContent += `
+            <div style="margin-top: 15px; page-break-inside: avoid;">
+                <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #2ecc71; border-left: 4px solid #2ecc71; padding-left: 6px;">價格分類統計</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; text-align: center; font-size: 10px;">
+                    <thead>
+                        <tr style="background-color: #2ecc71; color: #ffffff; font-weight: bold;">
+                            <th style="border: 1px solid #dddddd; padding: 6px;">價格</th>
+                            <th style="border: 1px solid #dddddd; padding: 6px;">總數量</th>
+                            <th style="border: 1px solid #dddddd; padding: 6px;">總金額</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        Object.entries(summaryByPrice).forEach(([price, count], idx) => {
+            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+            let totalByPrice = Number(price) * count;
+            htmlContent += `
+                <tr style="background-color: ${rowBg}; page-break-inside: avoid;">
+                    <td style="border: 1px solid #dddddd; padding: 4px;">MOP ${price}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${count} 隻</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px; font-weight: bold;">MOP ${totalByPrice}</td>
+                </tr>
+            `;
+        });
+
+        htmlContent += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // 4. 總結與簽名蓋章欄位
+        htmlContent += `
+            <div style="page-break-inside: avoid;">
+                <div style="margin-top: 15px; padding: 10px; background-color: #f5f7fa; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between;">
+                    <span>總計結果：</span>
+                    <span>總數量：<span style="color:#0072ff;">${grandTotalPcs}</span> 隻</span>
+                    <span>總金額：<span style="color:#2ecc71;">MOP ${grandTotalPrice}</span></span>
+                </div>
+                
+                <div style="margin-top: 45px; display: flex; justify-content: space-between; page-break-inside: avoid;">
+                    <div style="width: 180px; text-align: center;">
+                        <div style="border-bottom: 1px solid #999999; height: 25px;"></div>
+                        <p style="margin: 6px 0 0 0; font-size: 10px; color: #666;">抄數員簽署</p>
+                    </div>
+                    <div style="width: 180px; text-align: center;">
+                        <div style="border-bottom: 1px solid #999999; height: 25px;"></div>
+                        <p style="margin: 6px 0 0 0; font-size: 10px; color: #666;">公司蓋章</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        pdfContainer.innerHTML = htmlContent;
+
+        // 設定 html2pdf 選項，將 HTML 直接渲染為 A4 PDF
+        const opt = {
+            margin:       12, 
+            filename:     `${locationName}(${dateText})-扭蛋記錄.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            // 加入 pagebreak 控制規則，完全防範任何元素在換頁時被砍掉一半
+            pagebreak:    { mode: ['avoid-all', 'css'] }
+        };
+
+        // 執行轉換並下載
+        html2pdf().from(pdfContainer).set(opt).save().then(() => {
+            showSaveToast(`📤 已成功匯出 PDF`, 'info');
+        });
+    }
     
     window.addEventListener("beforeunload", (event) => {
        event.preventDefault();
@@ -933,8 +1090,10 @@
     window.saveToStorage = saveToStorage;
     window.exportCSV = exportCSV;
     window.exportCSVOut = exportCSVOut;
+    window.exportPDFOut = exportPDFOut;
     
   })();
   </script>
 </body>
 </html>
+
