@@ -760,20 +760,33 @@
        const dateText = markDateEl.value.trim();
        
       for (let i = 1; i <= currentFormCount; i++) {
+        const formTitleEl = document.querySelector(`#formNumText${i}`);
         const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
         if (!formTitle) {
           alert(`第${i}頁未輸入機頭`);
+          formTitleEl.focus();
           return;
+        }
+        
+        for (let a = 1; a <= 9; a++) {
+          const barcode = document.querySelector(`#barCode_${i}_${a}`);
+          if (barcode.value.length < 13 && barcode.value !== "") {
+            barcode.focus();
+            alert("條碼長度錯誤");
+            return;
+          }
         }
       }
       
       if (!locationName) {
-        alert("請輸入抄數地點"); 
+        alert("請輸入抄數地點");
+        locationEl.focus();
         return;
       }
       
       if (!dateText) {
-        alert("請輸入日期"); 
+        alert("請輸入日期");
+        markDateEl.focus();
         return;
       }
     
@@ -827,18 +840,37 @@
     }
     
     function exportCSVOut() {
+        const locationEl = document.querySelector('#location');
         const locationName = document.querySelector('#location').value.trim();
+        let markDateEl = document.querySelector('#markDate');
         let dateText = document.querySelector('#markDate').value.trim();
         for (let i = 1; i <= currentFormCount; i++) {
+          const formTitleEl = document.querySelector(`#formNumText${i}`);
           const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
           if (!formTitle) {
             alert(`第${i}頁未輸入機頭`);
+            formTitleEl.focus();
+            return;
+          }
+          
+        for (let a = 1; a <= 9; a++) {
+          const barcode = document.querySelector(`#barCode_${i}_${a}`);
+          if (barcode.value.length < 13 && barcode.value !== "") {
+            barcode.focus();
+            alert("條碼長度錯誤");
             return;
           }
         }
-        if (!locationName) return alert("請輸入地點");
-        if (!dateText) return alert("請輸入抄數日期");
-
+        
+        }
+        if (!locationName) {
+          locationEl.focus();
+          return alert("請輸入地點");
+        }
+        if (!dateText) {
+          markDateEl.focus();
+          return alert("請輸入抄數日期");
+        }
         const excelData = [
             ["盈喜澳門一人有限公司"],
             [],
@@ -900,18 +932,37 @@
     }
 
     function exportPDFOut() {
+        const locationEl = document.querySelector('#location');
         const locationName = document.querySelector('#location').value.trim();
+        const markDateEl = document.querySelector('#markDate');
         const dateText = document.querySelector('#markDate').value.trim();
         
         for (let i = 1; i <= currentFormCount; i++) {
-          const formTitle = document.querySelector(`#formNumText${i}`).value.trim();
+          const formTitleEl = document.querySelector(`#formNumText${i}`)
+          const formTitle = formTitleEl.value.trim();
           if (!formTitle) {
             alert(`第${i}頁未輸入機頭`);
+            formTitleEl.focus();
+            return;
+          }
+          
+        for (let a = 1; a <= 9; a++) {
+          const barcode = document.querySelector(`#barCode_${i}_${a}`);
+          if (barcode.value.length < 13 && barcode.value !== "") {
+            barcode.focus();
+            alert("條碼長度錯誤");
             return;
           }
         }
-        if (!locationName) return alert("請輸入地點");
-        if (!dateText) return alert("請輸入抄數日期");
+        }
+        if (!locationName) {
+          locationEl.focus();
+          return alert("請輸入地點");
+        }
+        if (!dateText) {
+          markDateEl.focus();
+          return alert("請輸入抄數日期");
+        }
 
         // 建立一個用於渲染 PDF 的隱藏乾淨容器
         const pdfContainer = document.createElement('div');
