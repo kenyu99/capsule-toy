@@ -948,7 +948,7 @@
           
         for (let a = 1; a <= 9; a++) {
           const barcode = document.querySelector(`#barCode_${i}_${a}`);
-          if (barcode.value.length < 13 && barcode.value !== "") {
+          if (barcode.value.length < 13 && barcode.value !== "" || barcode.value === "202410" || barcode.value === "202420") {
             barcode.focus();
             alert("條碼長度錯誤");
             return;
