@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <title>水貨蛋銷數</title>
+  <style>
+    /* 現代化漸層背景與重設 */
+    body {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      color: #333;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      margin: 15px 0 25px 0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 按鈕基礎樣式 */
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    button:active {
+      transform: scale(0.97);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    }
+
+    button:disabled {
+      background: #cccccc !important;
+      color: #888888 !important;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* 頂部操作區 */
+    #interactiveButton {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    #interactiveButton button {
+      flex: 1;
+      min-width: 100px;
+      background: #ffffff;
+      color: #1e3c72;
+    }
+
+    #interactiveButton button:hover {
+      background: #f0f4f8;
+    }
+
+    #fromTop {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    #addFormText, #extraCountText {
+      flex: 1;
+      min-width: 110px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 14px;
+      padding: 0 12px;
+      box-sizing: border-box;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    #addFormText::placeholder, #extraCountText::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+    }
+
+    #addFormText:focus, #extraCountText:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.3);
+      border-color: #ffffff;
+    }
+
+    #addForm {
+      background: #00c6ff;
+      background: linear-gradient(to right, #0072ff, #00c6ff);
+      color: white;
+      height: 42px;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    /* 增減頁數按鈕 */
+    #adjustButtons {
+      display: none;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      gap: 10px;
+    }
+
+    .btn-add {
+      flex: 1;
+      background: #2ecc71;
+      color: white;
+    }
+
+    .btn-add:hover {
+      background: #27ae60;
+    }
+
+    .btn-remove {
+      flex: 1;
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-remove:hover {
+      background: #c0392b;
+    }
+
+    /* 表格容器與卡片設計 */
+    #allForms {
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    fieldset {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      border-radius: 12px;
+      padding: 15px 12px;
+      margin: 0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+    }
+
+    legend {
+      background: rgba(85,145,215,1);
+      color: #ffffff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+
+    /* Details 折疊區域樣式 */
+    details {
+      border: none;
+      margin-bottom: 10px;
+    }
+
+    details[open] summary {
+      border-bottom: 1px dashed rgba(85,145,215,0.5);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+    }
+
+    summary {
+      list-style: none;
+      outline: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    /* 輸入欄位通用樣式 */
+    input {
+      border: 1px solid #ccd1d9;
+      border-radius: 6px;
+      padding: 6px 4px;
+      font-size: 13px;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #1e3c72;
+      box-shadow: 0 0 0 2px rgba(30, 60, 114, 0.15);
+    }
+
+    /* 每一列的排版 */
+    .priceDownAll {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #e6e9ed;
+    }
+
+    .priceDownAll:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .priceDownAll span[id^="win_"] {
+      font-size: 11px;
+      color: #656d78;
+      font-weight: bold;
+      min-width: 48px;
+    }
+
+    .barcodeBar {
+      flex: 2;
+      min-width: 65px;
+      max-width: 120px;
+      text-align: center;
+    }
+
+    input[id^="addPcs_"], input[id^="remPcs_"], input[id^="price_"] {
+      flex: 1;
+      min-width: 35px;
+      max-width: 55px;
+      text-align: center;
+    }
+
+    .sales-box {
+      font-size: 12px;
+      font-weight: bold;
+      color: #0072ff;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .priceDownAll div.total-box {
+      font-size: 12px;
+      font-weight: bold;
+      color: #434a54;
+      min-width: 45px;
+      text-align: right;
+    }
+
+    hr {
+      display: none;
+    }
+
+    .pcsNum {
+      color: #0072ff;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .priceNum {
+      color: #2ecc71;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* 統計區域 */
+    .totalBg {
+      display: none;
+      margin-top: 10px;
+    }
+
+    #totalPcsPrice {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    #totalPcsPrice legend {
+      background: #2ecc81;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #allFormsTotal {
+      font-size: 14px;
+      line-height: 1.6;
+      text-align: center;
+      color: #333333;
+    }
+
+    #allFormsTotal hr {
+      display: block;
+      border: none;
+      border-top: 1px solid #e6e9ed;
+      margin: 10px 0;
+    }
+
+    /* Toast 提示框 */
+    #saveToast {
+      position: fixed;
+      top: 20px;
+      right: -320px;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 9999;
+      transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .show-toast {
+      right: 20px !important;
+    }
+
+    .toast-success {
+      background: linear-gradient(135deg, #11998e, #38ef7d);
+    }
+
+    .toast-info {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+    }
+
+    footer {
+      text-align: right;
+      margin-top: 25px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="saveToast"></div>
+
+  <h1>水貨蛋銷數</h1>
+  <div id="interactiveButton">
+    <button onclick="exportCSV()">📤 匯出(銷數)</button>
+    <button onclick="exportCSVOut()">📤 匯出(記錄)</button>
+    <button onclick="exportPDFOut()">📤 匯出(PDF)</button>
+    <input type="file" id="importMapFile" accept=".xlsx" style="display:none;" onchange="importBarcodeMap(event)">
+    <button onclick="document.querySelector('#importMapFile').click()">📥 匯入對照表</button>
+  </div>
+  
+  <div id="fromTop">
+    <input type="number" id="addFormText" placeholder="輸入總列數" inputmode="numeric" oninput="document.querySelector('#addForm').disabled = false">
+    <input type="number" id="extraCountText" placeholder="輸入追加項數" inputmode="numeric">
+    <button id="addForm" onclick="addForm()" disabled="true">生成 / 追加表格</button>
+  </div>
+
+  <div id="adjustButtons">
+    <button class="btn-add" onclick="appendMultipleRows()">➕ 執行追加項數</button>
+    <button class="btn-remove" onclick="removeLastForm()">➖ 刪除末列</button>
+  </div>
+
+  <div id="allForms"></div>
+
+  <div class="totalBg">
+    <fieldset id="totalPcsPrice">
+      <legend>📊 總計摘要</legend>
+      <div id="allFormsTotal"></div>
+    </fieldset>
+  </div>
+
+  <footer>create by KinU 2026</footer>
+
+  <script>
+    const allForms = document.querySelector('#allForms');
+    const allFormsTotal = document.querySelector('#allFormsTotal');
+    const totalBg = document.querySelector('.totalBg');
+    const toast = document.querySelector('#saveToast');
+    const extraCountText = document.querySelector('#extraCountText');
+    const addFormText = document.querySelector('#addFormText');
+    
+    let currentFormCount = 0;
+    let machineRecords = [];
+    let barcodePriceMap = JSON.parse(localStorage.getItem('saveBarcodePriceMap')) || {};
+   
+    let toastTimeout;
+   
+    function loadFromStorage() {
+      const savedString = localStorage.getItem('gachaSaveData_v4');
+      if (!savedString) return;
+      const saveData = JSON.parse(savedString);
+
+      currentFormCount = saveData.formCount;
+
+      if (currentFormCount > 0) {
+          renderAllRowsHTML();
+          allForms.style.display = "flex";
+          document.querySelector('#adjustButtons').style.display = "flex";
+          document.querySelector('#addForm').disabled = true;
+      }
+      Object.keys(saveData.inputs).forEach(id => {
+          const inputEl = document.querySelector(`#${id}`);
+          if (inputEl && inputEl.type !== 'file') {
+              inputEl.value = saveData.inputs[id];
+          }
+      });
+      showSaveToast('💾 已讀取記錄', 'success');
+      updateAllSubForm(true);
+    }
+  
+    function showSaveToast(text, type = 'success') {
+      toast.innerText = "";
+      toast.innerText = text;
+      toast.classList.remove('toast-success', 'toast-info');
+      if (type === 'info'){
+        toast.classList.add('toast-info');
+      } else {
+        toast.classList.add('toast-success');
+      }
+      toast.classList.add('show-toast');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+          toast.classList.remove('show-toast');
+      }, 2000);
+    }
+
+    function renderAllRowsHTML(startFrom = 1) {
+      const detailsStates = {};
+      document.querySelectorAll('details').forEach(d => {
+        detailsStates[d.id] = d.open;
+      });
+
+      if (startFrom === 1) {
+        allForms.innerHTML = "";
+      }
+
+      let currentDetails = null;
+      
+      for (let i = startFrom; i <= currentFormCount; i++) {
+        const groupIndex = Math.floor((i - 1) / 30);
+        const isGroupStart = (i - 1) % 30 === 0;
+
+        if (isGroupStart) {
+          const groupStartNum = groupIndex * 30 + 1;
+          const groupEndNum = Math.min((groupIndex + 1) * 30, currentFormCount);
+          
+          let fieldset = document.querySelector(`#fieldset_group_${groupIndex}`);
+          let details = document.querySelector(`#details_group_${groupIndex}`);
+          
+          if (!fieldset) {
+            fieldset = document.createElement('fieldset');
+            fieldset.id = `fieldset_group_${groupIndex}`;
+            
+            details = document.createElement('details');
+            details.id = `details_group_${groupIndex}`;
+            
+            details.open = detailsStates[details.id] !== undefined ? detailsStates[details.id] : true;
+            
+            const summary = document.createElement('summary');
+            summary.innerHTML = `<legend id="legend_group_${groupIndex}">第 ${groupStartNum} - ${groupEndNum} 項 (點擊摺疊/展開)</legend>`;
+            
+            details.appendChild(summary);
+            fieldset.appendChild(details);
+            allForms.appendChild(fieldset);
+          } else {
+            const legendEl = document.querySelector(`#legend_group_${groupIndex}`);
+            if (legendEl) {
+              legendEl.innerText = `第 ${groupStartNum} - ${groupEndNum} 項 (點擊摺疊/展開)`;
+            }
+          }
+          currentDetails = details;
+        } else {
+          if (!currentDetails) {
+            currentDetails = document.querySelector(`#details_group_${groupIndex}`);
+          }
+        }
+
+        const rowHTML = `
+          <div class="priceDownAll" id="row_container_${i}">
+            <span id="win_${i}">第 ${i} 項</span>
+            <input class="barcodeBar" id="barCode_${i}" placeholder="條碼" oninput="updateAllSubForm()" inputmode="numeric">
+            <input id="addPcs_${i}" placeholder="加數" oninput="updateAllSubForm()" inputmode="numeric">
+            <input id="remPcs_${i}" placeholder="余數" oninput="updateAllSubForm()" inputmode="numeric">
+            <div class="sales-box" title="銷數 = 加數 - 余數"><span id="salesPcs_${i}">0</span>隻</div>
+            <input id="price_${i}" placeholder="價格" oninput="updateAllSubForm()" inputmode="numeric">
+            <div class="total-box">$ <span id="total_${i}">0</span></div>
+          </div>
+        `;
+        if (currentDetails) {
+          currentDetails.insertAdjacentHTML('beforeend', rowHTML);
+        }
+      }
+    }
+   
+    function addForm() {
+      let targetCount = Number(addFormText.value.trim());
+      
+      if (!targetCount || targetCount <= 0) {
+        document.querySelector('#addForm').disabled = true;
+        alert('請輸入有效數量');
+        return;
+      }
+      
+      if (allForms.innerHTML !== ""){
+        let isReAddForm = confirm(`**重新生成會消除數據**，是否確認生成？\n(若要保留數據並追加，請直接在「輸入追加項數」填寫並點擊「執行追加項數」)`);
+        if (!isReAddForm) {
+          addFormText.value = "";
+          document.querySelector('#addForm').disabled = true;
+          return;
+        }
+      }
+
+      localStorage.removeItem('gachaSaveData_v4');
+      currentFormCount = targetCount;
+      addFormText.value = "";
+      allForms.innerHTML = "";
+      allFormsTotal.innerHTML = "";
+      allForms.style.display = "flex";
+      totalBg.style.display = "none";
+      
+      document.querySelector('#adjustButtons').style.display = "flex";
+
+      renderAllRowsHTML(1);
+      document.querySelector('#addForm').disabled = true;
+      showSaveToast(`📄 已成功生成 ${currentFormCount} 列表格`, 'success');
+      updateAllSubForm(true);
+    }
+
+    function appendMultipleRows() {
+      let appendCount = Number(extraCountText.value.trim());
+      if (isNaN(appendCount) || appendCount <= 0) {
+        alert("請在「輸入追加項數」欄位填寫正確的追加數量！");
+        return;
+      }
+
+      if (allForms.innerHTML === "") {
+        alert("請先輸入總列數並生成基礎表格後，再執行追加！");
+        return;
+      }
+
+      const inputBackup = {};
+      const allInputs = document.querySelectorAll('input');
+      allInputs.forEach(input => {
+        if (input.id && input.type !== 'file') {
+          inputBackup[input.id] = input.value;
+        }
+      });
+
+      const startFrom = currentFormCount + 1;
+      currentFormCount += appendCount;
+      
+      renderAllRowsHTML(startFrom);
+
+      Object.keys(inputBackup).forEach(id => {
+        const el = document.querySelector(`#${id}`);
+        if (el) el.value = inputBackup[id];
+      });
+
+      extraCountText.value = "";
+      showSaveToast(`📄 已成功追加 ${appendCount} 項，目前共 ${currentFormCount} 項`, 'success');
+      updateAllSubForm(true);
+    }
+
+    function removeLastForm() {
+      if (currentFormCount <= 1) {
+        alert('至少需要保留一列表格！');
+        return;
+      }
+      if (confirm(`確定要刪除「第 ${currentFormCount} 列」嗎？該列已輸入的數據將會消失。`)) {
+        const lastRow = document.querySelector(`#row_container_${currentFormCount}`);
+        if (lastRow) {
+          lastRow.remove();
+        }
+        
+        const groupIndex = Math.floor((currentFormCount - 1) / 30);
+        const detailsEl = document.querySelector(`#details_group_${groupIndex}`);
+        if (detailsEl && detailsEl.querySelectorAll('.priceDownAll').length === 0) {
+          const fieldsetEl = document.querySelector(`#fieldset_group_${groupIndex}`);
+          if (fieldsetEl) fieldsetEl.remove();
+        } else if (detailsEl) {
+          const groupStartNum = groupIndex * 30 + 1;
+          const groupEndNum = currentFormCount - 1;
+          const legendEl = document.querySelector(`#legend_group_${groupIndex}`);
+          if (legendEl) {
+            legendEl.innerText = `第 ${groupStartNum} - ${groupEndNum} 項 (點擊摺疊/展開)`;
+          }
+        }
+
+        currentFormCount--;
+        showSaveToast(`📄 已刪除第 ${currentFormCount + 1} 列`, 'info');
+        updateAllSubForm(true);
+      }
+    }
+        
+    function importBarcodeMap(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert('沒有選擇檔案');
+        return;
+      }
+    
+      const reader = new FileReader();
+      barcodePriceMap = {};
+      reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            barcodePriceMap = {};
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const barCode = String(row[0]).trim();
+                const price = Number(row[1]);
+                
+                if (barCode && !isNaN(price)) {
+                    barcodePriceMap[barCode] = price;
+                }
+            }
+            
+            alert(`✅ 對照表匯入成功，共 ${Object.keys(barcodePriceMap).length} 個條碼`);
+            localStorage.setItem('saveBarcodePriceMap',JSON.stringify(barcodePriceMap));
+            updateAllSubForm(true);
+        } catch (error) {
+            alert('❌ 檔案格式錯誤，請確認是正確的 .xlsx 檔案');
+            console.error(error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function updateAllSubForm(skipSaveToast = false) {
+        machineRecords = [];
+        let summaryByBarcode = {};
+        let grandTotalSalesPcs = 0;
+        let grandTotalPrice = 0;
+
+        for (let i = 1; i <= currentFormCount; i++) {
+            const barCodeEl = document.querySelector(`#barCode_${i}`);
+            if (!barCodeEl) continue;
+
+            const barCode = barCodeEl.value.trim();
+            const priceInput = document.querySelector(`#price_${i}`);
+            
+            const addPcs = Number(document.querySelector(`#addPcs_${i}`).value.trim()) || 0;
+            const remPcs = Number(document.querySelector(`#remPcs_${i}`).value.trim()) || 0;
+            
+            const salesPcs = addPcs - remPcs;
+
+            const salesPcsSpan = document.querySelector(`#salesPcs_${i}`);
+            if (salesPcsSpan) {
+              salesPcsSpan.innerText = salesPcs;
+              salesPcsSpan.style.color = salesPcs > 0 ? "#0072ff" : (salesPcs < 0 ? "#e74c3c" : "#656d78");
+            }
+
+            if (barCode && barcodePriceMap[barCode] && !priceInput.value.trim()) {
+                priceInput.value = barcodePriceMap[barCode];
+            }
+            const price = Number(priceInput.value.trim()) || 0;
+            const rowSum = price * salesPcs;
+
+            const record = {
+                title: `第 ${i} 項`,
+                barcode: barCode || "",
+                price: price,
+                addPcs: addPcs,
+                remPcs: remPcs,
+                salesPcs: salesPcs,
+                total: rowSum
+            };
+            machineRecords.push(record);
+
+            grandTotalSalesPcs += salesPcs;
+            grandTotalPrice += rowSum;
+
+            if (barCode) {
+                if (!summaryByBarcode[barCode]) {
+                    summaryByBarcode[barCode] = { salesPcs: 0, price: price };
+                }
+                summaryByBarcode[barCode].salesPcs += salesPcs;
+                if (price > 0) summaryByBarcode[barCode].price = price;
+            }
+
+            const totalSpan = document.querySelector(`#total_${i}`);
+            if (totalSpan) {
+                totalSpan.innerText = rowSum;
+                totalSpan.style.color = rowSum > 0 ? "#2ecc71" : "#434a54";
+            }
+        }
+        
+        saveToStorage(skipSaveToast);
+        renderSummary(grandTotalSalesPcs, grandTotalPrice, summaryByBarcode);
+    }
+
+    function renderSummary(pcs, price, barcodeSummary) {
+        totalBg.style.display = "flex";
+        const detailHTML = Object.entries(barcodeSummary)
+            .filter(([bc, info]) => bc !== "" && info.salesPcs !== 0) 
+            .map(([bc, info]) => `條碼 <span style="color:#1e3c72;font-weight:bold;">${bc}</span> (${info.price ? '$'+info.price : '未訂價'})：銷售 <span class="pcsNum">${info.salesPcs}</span> 隻`)
+            .join("<br>");
+
+        allFormsTotal.innerHTML = `銷數總計 <span class="pcsNum">${pcs}</span> 個，總金額 $ <span class="priceNum">${price}</span><hr>${detailHTML || '尚無有效條碼銷售數據'}`;
+    }
+    
+    function saveToStorage(skipToast = false) {
+      let saveData = {
+          formCount: currentFormCount,
+          inputs: {}
+      };
+
+      const allInputs = document.querySelectorAll('input');
+      allInputs.forEach(input => {
+          if (input.id && input.type !== 'file') { 
+              saveData.inputs[input.id] = input.value;
+          }
+      });
+      
+      if (!skipToast){
+        showSaveToast("💾 已自動存檔", 'success');
+      }
+      
+      localStorage.setItem('gachaSaveData_v4', JSON.stringify(saveData));
+    }
+
+    function exportCSV() {
+      const excelData = [
+        [
+          "qty",
+          "item code",
+          "barcode",
+          "unit price",
+          "discount percent",
+          "remark",
+          "item type",
+          "item name",
+          "part number",
+          "vendor part number",
+          "customer or vendor",
+          "expiry date",
+          "expiry min months",
+          "expiry max months",
+          "custom lot number",
+          "product price group"
+        ]
+      ];
+    
+      const barcodeGroup = {};
+      machineRecords.forEach(m => {
+        const bc = m.barcode.trim();
+        if (bc && bc !== "0") {
+          if (!barcodeGroup[bc]) {
+            barcodeGroup[bc] = {
+              salesPcs: 0,
+              price: m.price
+            };
+          }
+          barcodeGroup[bc].salesPcs += m.salesPcs;
+          if (m.price > 0) barcodeGroup[bc].price = m.price;
+        }
+      });
+
+      const keys = Object.keys(barcodeGroup);
+      if (keys.length === 0) {
+        alert("目前沒有輸入任何有效條碼數據！");
+        return;
+      }
+
+      keys.forEach(bc => {
+        const item = barcodeGroup[bc];
+        excelData.push([
+          item.salesPcs,
+          "",
+          bc,
+          item.price,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]);
+      });
+   
+      const workbook = XLSX.utils.book_new();
+      const sheet = XLSX.utils.aoa_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(workbook, sheet, "銷數");
+      XLSX.writeFile(workbook, `水貨蛋銷數.xlsx`);
+      showSaveToast(`📤 已成功匯出 水貨蛋銷數`, 'info');
+    }
+    
+    function exportCSVOut() {
+        const excelData = [
+            ["水貨蛋銷數記錄"],
+            [],
+            ["項目", "貨品條碼", "價格", "加數(上架)", "余數(下架)", "銷售數量", "單項銷售"]
+        ];
+        let grandTotalSalesPcs = 0;
+        let grandTotalPrice = 0;
+        let summaryByBarcode = {};
+
+        machineRecords.forEach(m => {
+            excelData.push([m.title, m.barcode, m.price, m.addPcs, m.remPcs, m.salesPcs, m.total]);
+            
+            grandTotalSalesPcs += m.salesPcs;
+            grandTotalPrice += m.total;
+            
+            if (m.barcode) {
+              if (!summaryByBarcode[m.barcode]) {
+                summaryByBarcode[m.barcode] = { salesPcs: 0, price: m.price };
+              }
+              summaryByBarcode[m.barcode].salesPcs += m.salesPcs;
+              if (m.price > 0) summaryByBarcode[m.barcode].price = m.price;
+            }
+        });
+        excelData.push([]);
+        excelData.push(["條碼彙總銷售統計"]);
+        excelData.push(["貨品條碼", "單價", "總銷售數量", "總金額"]);
+
+        Object.entries(summaryByBarcode).forEach(([bc, info]) => {
+          let totalByBc = Number(info.price) * info.salesPcs;
+          excelData.push([bc, info.price ? `MOP ${info.price}` : '', `${info.salesPcs}隻`, `MOP ${totalByBc}`]);
+        });
+        excelData.push([]);
+        excelData.push(["總計結果", "", "", "", "", `${grandTotalSalesPcs}隻`, `MOP ${grandTotalPrice}`]);
+
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.aoa_to_sheet(excelData);
+        
+        sheet['!cols'] = [
+            { wch: 12 }, 
+            { wch: 18 },
+            { wch: 10 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 15 }
+        ];
+
+        XLSX.utils.book_append_sheet(workbook, sheet, "水貨蛋銷數記錄");
+        XLSX.writeFile(workbook, `水貨蛋銷數記錄.xlsx`);
+        showSaveToast(`📤 已匯出 水貨蛋銷數記錄`, 'info');
+    }
+
+    function exportPDFOut() {
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.padding = '25px';
+        pdfContainer.style.background = '#ffffff';
+        pdfContainer.style.color = '#333333';
+        pdfContainer.style.fontFamily = '"Microsoft JhengHei", "Heiti TC", sans-serif';
+        pdfContainer.style.fontSize = '11px';
+
+        let htmlContent = `
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0 0 3px 0; font-size: 18px; color: #1e3c72;">水貨蛋銷數記錄報表</h2>
+            </div>
+        `;
+
+        htmlContent += `
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; text-align: center; font-size: 10px;">
+                <thead>
+                    <tr style="background-color: #1e3c72; color: #ffffff; font-weight: bold;">
+                        <th style="border: 1px solid #dddddd; padding: 5px;">項目</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">貨品條碼</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">價格</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">加數</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">余數</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">銷數</th>
+                        <th style="border: 1px solid #dddddd; padding: 5px;">單項銷售</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        let grandTotalSalesPcs = 0;
+        let grandTotalPrice = 0;
+        let summaryByBarcode = {};
+
+        machineRecords.forEach((m, idx) => {
+            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+            htmlContent += `
+                <tr style="background-color: ${rowBg}; page-break-inside: avoid;">
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.title}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.barcode}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">MOP ${m.price}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.addPcs}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${m.remPcs}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px; font-weight: bold; color: #0072ff;">${m.salesPcs} 隻</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px; font-weight: bold; color: ${m.total > 0 ? '#2ecc71' : '#333'}">MOP ${m.total}</td>
+                </tr>
+            `;
+            grandTotalSalesPcs += m.salesPcs;
+            grandTotalPrice += m.total;
+            
+            if (m.barcode) {
+                if (!summaryByBarcode[m.barcode]) {
+                    summaryByBarcode[m.barcode] = { salesPcs: 0, price: m.price };
+                }
+                summaryByBarcode[m.barcode].salesPcs += m.salesPcs;
+                if (m.price > 0) summaryByBarcode[m.barcode].price = m.price;
+            }
+        });
+
+        htmlContent += `
+                </tbody>
+            </table>
+        `;
+
+        htmlContent += `
+            <div style="margin-top: 15px; page-break-inside: avoid;">
+                <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #2ecc71; border-left: 4px solid #2ecc71; padding-left: 6px;">條碼彙總銷售統計</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; text-align: center; font-size: 10px;">
+                    <thead>
+                        <tr style="background-color: #2ecc71; color: #ffffff; font-weight: bold;">
+                            <th style="border: 1px solid #dddddd; padding: 6px;">貨品條碼</th>
+                            <th style="border: 1px solid #dddddd; padding: 6px;">單價</th>
+                            <th style="border: 1px solid #dddddd; padding: 6px;">總銷售量</th>
+                            <th style="border: 1px solid #dddddd; padding: 6px;">總金額</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        Object.entries(summaryByBarcode).forEach(([bc, info], idx) => {
+            const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+            let totalByBc = Number(info.price) * info.salesPcs;
+            htmlContent += `
+                <tr style="background-color: ${rowBg}; page-break-inside: avoid;">
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${bc}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">MOP ${info.price}</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px;">${info.salesPcs} 隻</td>
+                    <td style="border: 1px solid #dddddd; padding: 4px; font-weight: bold;">MOP ${totalByBc}</td>
+                </tr>
+            `;
+        });
+
+        htmlContent += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        htmlContent += `
+            <div style="page-break-inside: avoid;">
+                <div style="margin-top: 15px; padding: 10px; background-color: #f5f7fa; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between;">
+                    <span>總計結果：</span>
+                    <span>總銷量：<span style="color:#0072ff;">${grandTotalSalesPcs}</span> 隻</span>
+                    <span>總金額：<span style="color:#2ecc71;">MOP ${grandTotalPrice}</span></span>
+                </div>
+            </div>
+        `;
+
+        pdfContainer.innerHTML = htmlContent;
+
+        const opt = {
+            margin:       12, 
+            filename:     `水貨蛋銷數記錄.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['avoid-all', 'css'] }
+        };
+
+        html2pdf().from(pdfContainer).set(opt).save().then(() => {
+            showSaveToast(`📤 已成功匯出 PDF`, 'info');
+        });
+    }
+    
+    window.addEventListener("beforeunload", (event) => {
+       event.preventDefault();
+       event.returnValue = "";
+    });
+  
+    // 欄位導航順序
+    const fieldSequence = ['barCode', 'addPcs', 'remPcs', 'price'];
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const active = document.activeElement;
+            
+            if (active && active.tagName === 'INPUT') {
+                e.preventDefault(); 
+
+                const id = active.id;
+                const match = id.match(/^(barCode|addPcs|remPcs|price)_(\d+)$/);
+
+                if (match) {
+                    const fieldPrefix = match[1];
+                    const row = parseInt(match[2], 10);
+
+                    if (row < currentFormCount) {
+                        const nextSameRowEl = document.querySelector(`#${fieldPrefix}_${row + 1}`);
+                        if (nextSameRowEl) {
+                            nextSameRowEl.focus();
+                            if (typeof nextSameRowEl.select === 'function') nextSameRowEl.select();
+                            return;
+                        }
+                    } else {
+                        const seqIdx = fieldSequence.indexOf(fieldPrefix);
+                        if (seqIdx !== -1) {
+                            const nextFieldPrefix = fieldSequence[(seqIdx + 1) % fieldSequence.length];
+                            const nextFirstEl = document.querySelector(`#${nextFieldPrefix}_1`);
+                            if (nextFirstEl) {
+                                nextFirstEl.focus();
+                                if (typeof nextFirstEl.select === 'function') nextFirstEl.select();
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                const focusableInputs = Array.from(document.querySelectorAll('input:not([type="file"]):not([disabled])'));
+                const index = focusableInputs.indexOf(active);
+                if (index > -1 && index < focusableInputs.length - 1) {
+                    focusableInputs[index + 1].focus();
+                    if (typeof focusableInputs[index + 1].select === 'function') focusableInputs[index + 1].select();
+                }
+            }
+        }
+    });
+
+    window.onload = () => {
+        loadFromStorage();         
+    };
+  </script>
+</body>
+</html>
